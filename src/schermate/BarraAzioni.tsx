@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { coda } from '../upload/coda'
 import { useBloccoScorrimento, useTastieraAperta } from '../bloccoScorrimento'
+import { IconaRicordi, IconaMessaggi, IconaFotocamera, IconaGalleria } from './Icone'
 
 type Vista = 'muro' | 'messaggi'
 
@@ -53,20 +54,24 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
               onClick={() => scatta.current?.click()}
               className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl active:bg-salvia-velo/60 transition-colors"
             >
-              <span className="w-11 h-11 rounded-full bg-salvia-velo grid place-items-center text-lg">📷</span>
+              <span className="w-12 h-12 rounded-full bg-salvia-velo grid place-items-center text-salvia">
+                <IconaFotocamera className="w-6 h-6" />
+              </span>
               <span className="text-left">
-                <span className="block">Scatta adesso</span>
-                <span className="block text-xs text-fumo">Apre la fotocamera</span>
+                <span className="block text-[17px]">Scatta adesso</span>
+                <span className="block text-sm text-fumo">Apre la fotocamera</span>
               </span>
             </button>
             <button
               onClick={() => galleria.current?.click()}
               className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl active:bg-salvia-velo/60 transition-colors"
             >
-              <span className="w-11 h-11 rounded-full bg-salvia-velo grid place-items-center text-lg">🖼️</span>
+              <span className="w-12 h-12 rounded-full bg-salvia-velo grid place-items-center text-salvia">
+                <IconaGalleria className="w-6 h-6" />
+              </span>
               <span className="text-left">
-                <span className="block">Scegli dal telefono</span>
-                <span className="block text-xs text-fumo">Anche più foto insieme</span>
+                <span className="block text-[17px]">Scegli dal telefono</span>
+                <span className="block text-sm text-fumo">Anche più foto insieme</span>
               </span>
             </button>
           </div>
@@ -83,37 +88,50 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
                     ${tastiera ? 'translate-y-full' : ''}`}
       >
         <div className="flex items-center justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <Scheda attiva={vista === 'muro'} onClick={() => cambia('muro')} etichetta="Ricordi" icona="▦" />
+          <Scheda
+            attiva={vista === 'muro'}
+            onClick={() => cambia('muro')}
+            etichetta="Ricordi"
+            Icona={IconaRicordi}
+          />
 
           <button
             onClick={() => setMenu(true)}
             aria-label="Aggiungi foto o video"
-            className="w-14 h-14 -mt-6 rounded-full bg-salvia text-crema text-2xl leading-none
-                       shadow-lg shadow-salvia/30 active:scale-95 transition-transform
-                       border-4 border-crema"
+            className="w-[68px] h-[68px] -mt-7 rounded-full bg-salvia text-crema
+                       grid place-items-center shadow-lg shadow-salvia/30
+                       active:scale-95 transition-transform border-4 border-crema"
           >
-            +
+            <IconaFotocamera className="w-8 h-8" />
           </button>
 
-          <Scheda attiva={vista === 'messaggi'} onClick={() => cambia('messaggi')} etichetta="Messaggi" icona="✎" />
+          <Scheda
+            attiva={vista === 'messaggi'}
+            onClick={() => cambia('messaggi')}
+            etichetta="Messaggi"
+            Icona={IconaMessaggi}
+          />
         </div>
       </nav>
     </>
   )
 }
 
-function Scheda({ attiva, onClick, etichetta, icona }: {
-  attiva: boolean; onClick: () => void; etichetta: string; icona: string
+function Scheda({ attiva, onClick, etichetta, Icona }: {
+  attiva: boolean
+  onClick: () => void
+  etichetta: string
+  Icona: (p: { className?: string }) => React.ReactElement
 }) {
   return (
     <button
       onClick={onClick}
-      // 64px di lato: sopra la soglia dei 44px che rende un bersaglio comodo al dito.
-      className={`min-w-16 py-2 px-4 rounded-xl flex flex-col items-center gap-0.5 transition-colors
+      // Ben oltre i 44px raccomandati: si prende col pollice senza guardare.
+      className={`min-w-[76px] py-2 px-4 rounded-xl flex flex-col items-center gap-1 transition-colors
                   ${attiva ? 'text-salvia' : 'text-fumo/60'}`}
     >
-      <span className="text-lg leading-none">{icona}</span>
-      <span className="text-[11px]">{etichetta}</span>
+      <Icona className="w-6 h-6" />
+      <span className="text-[13px]">{etichetta}</span>
     </button>
   )
 }

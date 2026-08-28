@@ -41,8 +41,8 @@ export function Visore({ elenco, indice, chiudi }: {
     >
       <div className="sicura-sopra px-4 pb-3 flex items-center justify-between text-white/90">
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{m.nome}</p>
-          <p className="text-[11px] text-white/50">{quando(m.creato_il)}</p>
+          <p className="text-[15px] font-medium truncate">{m.nome}</p>
+          <p className="text-[12px] text-white/50">{quando(m.creato_il)}</p>
         </div>
         <button onClick={chiudi} className="w-10 h-10 grid place-items-center text-2xl leading-none">
           ×
@@ -70,7 +70,7 @@ export function Visore({ elenco, indice, chiudi }: {
         )}
       </div>
 
-      <div className="sicura-sotto px-4 pt-3 flex items-center justify-between text-white/70 text-xs">
+      <div className="sicura-sotto px-4 pt-3 flex items-center justify-between text-white/70 text-[14px]">
         <button
           onClick={() => setI((x) => Math.max(x - 1, 0))}
           disabled={i === 0}

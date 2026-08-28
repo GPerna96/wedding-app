@@ -101,7 +101,7 @@ export function LettoreQr({ trovato, chiudi }: { trovato: Esito; chiudi: () => v
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       <div className="sicura-sopra px-4 pb-3 flex items-center justify-between text-white/90">
-        <p className="text-sm">Inquadra il codice sul tavolo</p>
+        <p className="text-[15px]">Inquadra il codice sul tavolo</p>
         <button onClick={chiudi} aria-label="Chiudi" className="w-10 h-10 grid place-items-center text-2xl leading-none">
           ×
         </button>
@@ -117,9 +117,9 @@ export function LettoreQr({ trovato, chiudi }: { trovato: Esito; chiudi: () => v
 
       <div className="sicura-sotto px-6 pt-4 text-center">
         {errore ? (
-          <p className="text-white/90 text-sm leading-relaxed">{errore}</p>
+          <p className="text-white/90 text-[15px] leading-relaxed">{errore}</p>
         ) : (
-          <p className="text-white/60 text-sm">{cerca ? 'Cerco il codice…' : 'Trovato!'}</p>
+          <p className="text-white/60 text-[15px]">{cerca ? 'Cerco il codice…' : 'Trovato!'}</p>
         )}
       </div>
     </div>

@@ -34,8 +34,8 @@ export function Messaggi() {
   return (
     <div className="min-h-dvh pb-28">
       <header className="sicura-sopra px-5 pb-5 text-center">
-        <h1 className="titolo text-2xl">Due parole per loro</h1>
-        <p className="text-fumo text-xs mt-1">Rita e Francesco le leggeranno tutte</p>
+        <h1 className="titolo text-[28px]">Due parole per loro</h1>
+        <p className="text-fumo text-sm mt-1.5">Rita e Francesco le leggeranno tutte</p>
       </header>
 
       <form onSubmit={invia} className="px-4 mb-7">
@@ -46,7 +46,7 @@ export function Messaggi() {
           rows={3}
           maxLength={1000}
           className="w-full bg-carta border border-salvia-velo rounded-2xl px-4 py-3
-                     outline-none focus:border-salvia-chiara resize-none
+                     outline-none focus:border-salvia-chiara resize-none text-[17px]
                      placeholder:text-fumo/50 transition-colors"
         />
         <button
@@ -62,14 +62,14 @@ export function Messaggi() {
       <div className="px-4 space-y-3">
         {elenco.map((m) => (
           <div key={m.id} className="bg-carta border border-salvia-velo rounded-2xl px-5 py-4 comparsa">
-            <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{m.testo}</p>
-            <p className="text-[11px] text-fumo mt-3">
+            <p className="text-[17px] leading-relaxed whitespace-pre-wrap">{m.testo}</p>
+            <p className="text-[13px] text-fumo mt-3">
               <span className="text-salvia font-medium">{m.nome}</span> · {quando(m.creato_il)}
             </p>
           </div>
         ))}
         {elenco.length === 0 && (
-          <p className="text-center text-fumo text-sm py-12">
+          <p className="text-center text-fumo text-[15px] py-12">
             Nessun messaggio ancora. Comincia tu.
           </p>
         )}

@@ -34,7 +34,28 @@ export function App() {
     }
   }, [])
 
-  useEffect(() => { api.io().then(setIo).catch(() => setIo({ dentro: false, sposi: 'Rita & Francesco' })) }, [])
+  useEffect(() => {
+    (async () => {
+      // L'app installata su iOS parte da un indirizzo che si porta dietro la
+      // sessione, perche' li' i cookie di Safari non arrivano.
+      const sessione = new URLSearchParams(location.search).get('s')
+      if (sessione) {
+        try {
+          const r = await fetch('/api/riprendi', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sessione }),
+          })
+          if (r.ok) history.replaceState(null, '', location.pathname)
+        } catch { /* si ripiega sul controllo normale */ }
+      }
+      try {
+        setIo(await api.io())
+      } catch {
+        setIo({ dentro: false, sposi: 'Rita & Francesco' })
+      }
+    })()
+  }, [])
 
   // Avviso se si chiude l'app con roba ancora in volo.
   useEffect(() => {

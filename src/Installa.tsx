@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { IconaInstalla } from './schermate/Icone'
 
 type EventoInstallazione = Event & { prompt: () => Promise<void> }
 
@@ -46,10 +47,10 @@ export function Installa({ attivo }: { attivo: boolean }) {
   return (
     <div className="fixed inset-x-3 bottom-24 z-20 bg-carta border border-salvia-velo
                     rounded-2xl shadow-lg px-4 py-3.5 flex items-start gap-3 comparsa">
-      <span className="text-xl leading-none mt-0.5">📲</span>
+      <span className="text-salvia mt-0.5"><IconaInstalla className="w-6 h-6" /></span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">Tienila a portata di mano</p>
-        <p className="text-xs text-fumo leading-relaxed mt-0.5">
+        <p className="text-[15px] font-medium">Tienila a portata di mano</p>
+        <p className="text-[13px] text-fumo leading-relaxed mt-0.5">
           {evento
             ? 'Aggiungila alla schermata iniziale: si apre come un’app, senza cercare il link.'
             : 'Tocca Condividi in basso, poi «Aggiungi alla schermata Home».'}
@@ -57,7 +58,7 @@ export function Installa({ attivo }: { attivo: boolean }) {
         {evento && (
           <button
             onClick={() => { evento.prompt(); chiudi() }}
-            className="mt-2 bg-salvia text-crema rounded-xl px-4 py-2 text-xs"
+            className="mt-2.5 bg-salvia text-crema rounded-xl px-4 py-2 text-sm"
           >
             Aggiungi
           </button>
