@@ -68,6 +68,17 @@ Per rigenerare il QR dopo un cambio di token:
 pnpm dlx qrcode -o qr/accesso.png -w 1200 "https://wedding-app.pernagaetano.workers.dev/?k=<TOKEN>"
 ```
 
+## Da non fare durante la festa
+
+**Non svuotare la tabella `ospiti`.** Il cookie di ogni invitato punta a una riga
+di quella tabella: cancellarla lascia i cookie validi ma orfani, e tutti si
+ritrovano di colpo davanti al benvenuto, con il QR ormai lontano dal tavolo.
+Vale anche per un semplice `delete from ospiti` di pulizia.
+
+Se serve nascondere qualcosa, si usa il pannello sposi: nasconde senza toccare
+le sessioni. `pnpm db:azzera-tutto` esiste per svuotare tutto prima dell'evento,
+e va lanciato solo allora.
+
 ## Costi
 
 R2 resta dentro il piano gratuito tranne lo spazio: ~0,60 $/mese per 50 GB.

@@ -8,7 +8,8 @@
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "db:local": "wrangler d1 migrations apply wedding-app --local",
-    "db:remote": "wrangler d1 migrations apply wedding-app --remote"
+    "db:remote": "wrangler d1 migrations apply wedding-app --remote",
+    "db:azzera-tutto": "wrangler d1 execute wedding-app --remote --command \"delete from rientri; delete from media; delete from messaggi; delete from ospiti\""
   },
   "dependencies": {
     "hono": "^4.6.14",
