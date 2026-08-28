@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* Font serviti dai nostri asset: una richiesta esterna in meno e nessuna
+   dipendenza dalla rete di terzi mentre 63 persone caricano video. */
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("/font/cormorant.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2191, U+2193, U+2212;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/font/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2191, U+2193, U+2212;
+}
+
 @theme {
   --color-crema:    #F7F5F0;
   --color-carta:    #FFFDF9;
