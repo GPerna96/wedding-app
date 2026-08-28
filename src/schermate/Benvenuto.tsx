@@ -3,6 +3,7 @@ import { api } from '../api'
 import { t } from '../lingua'
 import { LettoreQr } from './LettoreQr'
 import { Foglie } from './Foglie'
+import { AccessoSposi } from './AccessoSposi'
 
 export function Benvenuto({ sposi, token, entrato }: {
   sposi: string
@@ -114,6 +115,10 @@ export function Benvenuto({ sposi, token, entrato }: {
       </form>
       </>
       )}
+      </div>
+
+      <div className="relative z-10 w-full">
+        <AccessoSposi />
       </div>
     </div>
   )

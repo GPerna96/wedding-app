@@ -65,6 +65,12 @@ const testi = {
     adesso: 'adesso',
     minFa: (n: number) => `${n} min fa`,
     oreFa: (n: number) => `${n} h fa`,
+
+    accessoSposi: 'Accesso sposi',
+    soloSposi: 'Questa parte è riservata a Rita e Francesco.',
+    codice: 'Codice',
+    codiceErrato: 'Codice non riconosciuto.',
+    annulla: 'Annulla',
   },
 
   en: {
@@ -127,6 +133,12 @@ const testi = {
     adesso: 'just now',
     minFa: (n: number) => `${n} min ago`,
     oreFa: (n: number) => `${n} h ago`,
+
+    accessoSposi: 'Couple’s access',
+    soloSposi: 'This part is reserved for Rita and Francesco.',
+    codice: 'Code',
+    codiceErrato: 'Code not recognised.',
+    annulla: 'Cancel',
   },
 } as const
 

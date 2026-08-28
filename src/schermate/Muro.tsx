@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, type MediaRiga } from '../api'
 import { t, quando } from '../lingua'
 import { coda, type Lavoro } from '../upload/coda'
+import { AccessoSposi } from './AccessoSposi'
 
 const INTERVALLO = 8000
 
@@ -152,6 +153,7 @@ export function Muro({ apri, nome, sposi, inPausa }: {
         </div>
       )}
 
+      <AccessoSposi />
     </div>
   )
 }
