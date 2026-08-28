@@ -14,6 +14,8 @@ admin.post('/api/sposi/entra', async (c) => {
 admin.use('/api/sposi/tutto', richiedeAdmin)
 admin.use('/api/sposi/nascondi', richiedeAdmin)
 admin.use('/api/sposi/elenco', richiedeAdmin)
+admin.use('/api/sposi/deposito', richiedeAdmin)
+admin.use('/api/sposi/pulisci-orfani', richiedeAdmin)
 
 /** Come il muro, ma vede anche il nascosto e gli upload incompleti. */
 admin.get('/api/sposi/tutto', async (c) => {
@@ -46,6 +48,89 @@ admin.post('/api/sposi/nascondi', async (c) => {
   await c.env.DB.prepare(`update ${tipo} set nascosto = ? where id = ?`)
     .bind(nascosto ? 1 : 0, id).run()
   return c.json({ ok: true })
+})
+
+/**
+ * Confronto fra cio' che sta nel deposito e cio' che risulta nel database.
+ * A fine festa dice se qualche caricamento si e' fermato a meta': il file c'e'
+ * ma nessuno lo elenchera' mai, oppure il contrario.
+ */
+admin.get('/api/sposi/deposito', async (c) => {
+  const attese = new Set<string>()
+  const { results } = await c.env.DB.prepare(
+    'select chiave_originale, chiave_anteprima, stato from media',
+  ).all<{ chiave_originale: string; chiave_anteprima: string; stato: string }>()
+  for (const r of results) {
+    if (r.stato === 'completo') attese.add(r.chiave_originale)
+    attese.add(r.chiave_anteprima)
+  }
+
+  const nelDeposito: string[] = []
+  let byte = 0
+  let cursore: string | undefined
+  do {
+    const pagina = await c.env.MEDIA.list({ limit: 1000, cursor: cursore })
+    for (const o of pagina.objects) {
+      nelDeposito.push(o.key)
+      byte += o.size
+    }
+    cursore = pagina.truncated ? pagina.cursor : undefined
+  } while (cursore)
+
+  const presenti = new Set(nelDeposito)
+  return c.json({
+    oggetti: nelDeposito.length,
+    byte,
+    // file nel deposito che il database non conosce
+    orfani: nelDeposito.filter((k) => !attese.has(k)),
+    // righe che promettono un file che non c'e'
+    mancanti: [...attese].filter((k) => !presenti.has(k)),
+  })
+})
+
+/**
+ * Rimuove dal deposito i file che il database non conosce: restano quando un
+ * caricamento si interrompe a meta'.
+ *
+ * Cancella per sempre, quindi vuole sapere in anticipo quanti file si aspetta
+ * di trovare: se il numero non torna -- per esempio perche' il database e'
+ * stato svuotato e allora *tutto* risulterebbe orfano -- si ferma senza fare
+ * danni.
+ */
+admin.post('/api/sposi/pulisci-orfani', async (c) => {
+  const { attesi } = await c.req.json<{ attesi: number }>()
+  if (!Number.isInteger(attesi)) return c.json({ errore: 'serve_conferma' }, 400)
+
+  const conosciute = new Set<string>()
+  const { results } = await c.env.DB.prepare(
+    'select chiave_originale, chiave_anteprima from media',
+  ).all<{ chiave_originale: string; chiave_anteprima: string }>()
+  for (const r of results) {
+    conosciute.add(r.chiave_originale)
+    conosciute.add(r.chiave_anteprima)
+  }
+
+  const orfani: string[] = []
+  let cursore: string | undefined
+  do {
+    const pagina = await c.env.MEDIA.list({ limit: 1000, cursor: cursore })
+    for (const o of pagina.objects) if (!conosciute.has(o.key)) orfani.push(o.key)
+    cursore = pagina.truncated ? pagina.cursor : undefined
+  } while (cursore)
+
+  if (orfani.length !== attesi) {
+    return c.json({
+      errore: 'numero_diverso_dal_previsto',
+      trovati: orfani.length,
+      attesi,
+    }, 409)
+  }
+
+  // A blocchi: delete accetta piu' chiavi per volta.
+  for (let i = 0; i < orfani.length; i += 100) {
+    await c.env.MEDIA.delete(orfani.slice(i, i + 100))
+  }
+  return c.json({ rimossi: orfani.length })
 })
 
 /** Elenco delle chiavi R2 degli originali, per il recupero finale con rclone. */
