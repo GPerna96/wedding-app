@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "rita-e-francesco",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-25",
+  "observability": { "enabled": true },
+
+  // La SPA compilata da Vite. run_worker_first: il Worker vede /api/* e /media/*,
+  // tutto il resto lo servono gli asset statici; not_found_handling rimanda a
+  // index.html cosi' le rotte lato client (/sposi) funzionano al reload.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/media/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rita-francesco",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "./migrations"
+    }
+  ],
+
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "rita-francesco" }
+  ],
+
+  "vars": {
+    "SPOSI": "Rita & Francesco"
+  }
+  // Segreti (wrangler secret put): TOKEN_EVENTO, SEGRETO_COOKIE, SEGRETO_ADMIN
+}
