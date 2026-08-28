@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api'
+import { LettoreQr } from './LettoreQr'
+import { Foglie } from './Foglie'
 
 export function Benvenuto({ sposi, token, entrato }: {
   sposi: string
@@ -9,6 +11,11 @@ export function Benvenuto({ sposi, token, entrato }: {
   const [nome, setNome] = useState('')
   const [errore, setErrore] = useState<string | null>(null)
   const [invio, setInvio] = useState(false)
+  const [lettore, setLettore] = useState(false)
+  // Il token puo' arrivare dal QR aperto con la fotocamera di sistema oppure
+  // essere letto qui dentro: da questo punto in poi non fa differenza.
+  const [letto, setLetto] = useState<string | null>(null)
+  const codice = token ?? letto
 
   const [primo, secondo] = sposi.split('&').map((s) => s.trim())
 
@@ -18,7 +25,7 @@ export function Benvenuto({ sposi, token, entrato }: {
     setInvio(true)
     setErrore(null)
     try {
-      const r = await api.entra(token ?? '', nome)
+      const r = await api.entra(codice ?? '', nome)
       entrato(r.nome)
     } catch (err) {
       setErrore(
@@ -30,8 +37,19 @@ export function Benvenuto({ sposi, token, entrato }: {
     }
   }
 
+  if (lettore) {
+    return (
+      <LettoreQr
+        chiudi={() => setLettore(false)}
+        trovato={(t) => { setLetto(t); setLettore(false) }}
+      />
+    )
+  }
+
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center px-7 text-center comparsa">
+    <div className="min-h-dvh flex flex-col items-center justify-center px-7 text-center comparsa relative">
+      <Foglie />
+      <div className="relative z-10 flex flex-col items-center w-full">
       <p className="titolo text-fumo tracking-[0.3em] text-xs uppercase mb-8">
         Il matrimonio di
       </p>
@@ -44,7 +62,7 @@ export function Benvenuto({ sposi, token, entrato }: {
 
       <div className="w-16 h-px bg-salvia-chiara my-9" />
 
-      {!token ? (
+      {!codice ? (
         /* Senza il codice dell'invito non si entra: meglio dirlo subito che
            far scrivere un nome per poi rifiutarlo. */
         <div className="max-w-xs">
@@ -54,13 +72,20 @@ export function Benvenuto({ sposi, token, entrato }: {
           </p>
           <div className="bg-carta border border-salvia-velo rounded-2xl px-6 py-7">
             <p className="titolo text-xl mb-2">Inquadra il codice</p>
-            <p className="text-fumo text-sm leading-relaxed">
-              Trovi il QR sul tuo tavolo. Aprilo con la fotocamera del telefono
-              e l'app si apre da sola.
+            <p className="text-fumo text-sm leading-relaxed mb-6">
+              Trovi il QR sul tuo tavolo.
             </p>
+            <button
+              onClick={() => setLettore(true)}
+              className="w-full bg-salvia text-crema rounded-2xl py-4 tracking-wide
+                         active:scale-[0.98] transition-transform"
+            >
+              Apri la fotocamera
+            </button>
           </div>
           <p className="text-fumo/70 text-xs mt-5 leading-relaxed">
-            Se il codice non si legge, chiedi il link a Rita o Francesco.
+            Puoi anche inquadrarlo con la fotocamera del telefono: l'app si apre
+            da sola.
           </p>
         </div>
       ) : (
@@ -95,6 +120,7 @@ export function Benvenuto({ sposi, token, entrato }: {
       </form>
       </>
       )}
+      </div>
     </div>
   )
 }
