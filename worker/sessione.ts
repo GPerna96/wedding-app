@@ -90,6 +90,18 @@ export async function apriSessioneAdmin(c: any, chiave: string) {
   return true
 }
 
+/**
+ * I file dei media: dentro solo chi ha una sessione, ospite o sposi. Senza
+ * questo, il link di una foto girato fuori dalla festa la renderebbe visibile
+ * a chiunque.
+ */
+export const richiedeSessione = createMiddleware<{ Bindings: Env }>(async (c, next) => {
+  const ospite = await verifica(getCookie(c, 'ospite'), c.env.SEGRETO_COOKIE)
+  const sposi = await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)
+  if (!ospite && sposi !== 'ok') return c.text('Non autorizzato', 401)
+  await next()
+})
+
 /** Il pannello sposi: solo cookie firmato, nessuna scorciatoia via URL. */
 export const richiedeAdmin = createMiddleware<{ Bindings: Env }>(async (c, next) => {
   const daCookie = await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)

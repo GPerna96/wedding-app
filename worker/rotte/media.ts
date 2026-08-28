@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { richiedeOspite } from '../sessione'
+import { richiedeOspite, richiedeSessione } from '../sessione'
 import type { Env, Variabili } from '../tipi'
 
 export const media = new Hono<{ Bindings: Env; Variables: Variabili }>()
@@ -32,6 +32,7 @@ function nomePulito(nome: string) {
 
 media.use('/api/media/*', richiedeOspite)
 media.use('/api/upload/*', richiedeOspite)
+media.use('/media/*', richiedeSessione)
 
 /**
  * Apre un caricamento. Per i file piccoli basta un PUT singolo; sopra la soglia
@@ -181,7 +182,9 @@ media.get('/media/:genere/:id', async (c) => {
   h.set('x-content-type-options', 'nosniff')
   h.set('content-security-policy', "default-src 'none'; sandbox")
   h.set('etag', oggetto.httpEtag)
-  h.set('cache-control', 'public, max-age=31536000, immutable')
+  // private: la copia sta nel browser di chi e' autorizzato, non nelle cache
+  // condivise a monte, che la servirebbero senza controllare il cookie.
+  h.set('cache-control', 'private, max-age=31536000, immutable')
   h.set('accept-ranges', 'bytes')
 
   if (oggetto.range && 'offset' in oggetto.range) {

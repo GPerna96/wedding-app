@@ -14,12 +14,23 @@ export function App() {
   const [vista, setVista] = useState<Vista>('muro')
   const [visore, setVisore] = useState<{ i: number; elenco: MediaRiga[] } | null>(null)
 
-  // Il token arriva dal QR. Lo leggo subito e lo tolgo dall'URL, cosi' nessuno
-  // condivide per sbaglio un link che apre le porte a chi non c'era.
-  const [token] = useState(() => new URLSearchParams(location.search).get('k'))
+  // Il token arriva dal QR. Lo tolgo dall'URL perche' nessuno condivida per
+  // sbaglio un link che apre le porte a chi non c'era, ma lo parcheggio nella
+  // sessione: se l'ospite ricarica prima di aver scritto il nome, altrimenti
+  // resterebbe chiuso fuori senza capire il perche'.
+  const [token] = useState(() => {
+    const daUrl = new URLSearchParams(location.search).get('k')
+    if (daUrl) {
+      try { sessionStorage.setItem('token', daUrl) } catch { /* navigazione privata */ }
+      return daUrl
+    }
+    try { return sessionStorage.getItem('token') } catch { return null }
+  })
   useEffect(() => {
-    if (token) history.replaceState(null, '', location.pathname)
-  }, [token])
+    if (new URLSearchParams(location.search).get('k')) {
+      history.replaceState(null, '', location.pathname)
+    }
+  }, [])
 
   useEffect(() => { api.io().then(setIo).catch(() => setIo({ dentro: false, sposi: 'Rita & Francesco' })) }, [])
 
@@ -39,7 +50,10 @@ export function App() {
       <Benvenuto
         sposi={io.sposi}
         token={token}
-        entrato={(nome) => setIo({ dentro: true, nome, sposi: io.sposi })}
+        entrato={(nome) => {
+          try { sessionStorage.removeItem('token') } catch { /* niente */ }
+          setIo({ dentro: true, nome, sposi: io.sposi })
+        }}
       />
     )
   }
