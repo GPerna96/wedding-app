@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "db:local": "wrangler d1 migrations apply wedding-app --local",
     "db:remote": "wrangler d1 migrations apply wedding-app --remote",
-    "db:azzera-tutto": "node -e \"process.stdout.write('Cancella TUTTI gli ospiti, i media e i messaggi. Riesegui con CONFERMA=si\\n'); if (process.env.CONFERMA !== 'si') process.exit(1)\" && wrangler d1 execute wedding-app --remote --command \"delete from rientri; delete from media; delete from messaggi; delete from ospiti\""
+    "db:azzera-tutto": "node -e \"process.stdout.write('Cancella TUTTI gli ospiti, i media e i messaggi. Riesegui con CONFERMA=si\\n'); if (process.env.CONFERMA !== 'si') process.exit(1)\" && wrangler d1 execute wedding-app --remote --command \"delete from rientri; delete from media; delete from messaggi; delete from ospiti\"",
+    "qr": "node scripts/qr.mjs"
   },
   "dependencies": {
     "hono": "^4.6.14",
