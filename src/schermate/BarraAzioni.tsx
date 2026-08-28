@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { coda } from '../upload/coda'
+import { useBloccoScorrimento, useTastieraAperta } from '../bloccoScorrimento'
 
 type Vista = 'muro' | 'messaggi'
 
@@ -12,6 +13,10 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
   const [menu, setMenu] = useState(false)
   const scatta = useRef<HTMLInputElement>(null)
   const galleria = useRef<HTMLInputElement>(null)
+
+  useBloccoScorrimento(menu)
+  // Con la tastiera aperta la barra finirebbe sepolta sotto: meglio toglierla.
+  const tastiera = useTastieraAperta()
 
   // Il menu si chiude col tasto indietro invece di lasciare l'utente bloccato.
   useEffect(() => {
@@ -72,7 +77,11 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
       <input ref={scatta} type="file" accept="image/*,video/*" capture="environment" hidden onChange={ricevi} />
       <input ref={galleria} type="file" accept="image/*,video/*" multiple hidden onChange={ricevi} />
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 bg-carta/95 backdrop-blur border-t border-salvia-velo">
+      <nav
+        className={`fixed inset-x-0 bottom-0 z-30 bg-carta/95 backdrop-blur border-t
+                    border-salvia-velo transition-transform duration-200
+                    ${tastiera ? 'translate-y-full' : ''}`}
+      >
         <div className="flex items-center justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Scheda attiva={vista === 'muro'} onClick={() => cambia('muro')} etichetta="Ricordi" icona="▦" />
 

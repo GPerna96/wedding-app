@@ -33,13 +33,18 @@
 @layer base {
   html {
     background: var(--color-crema);
-    /* L'app vive dentro Safari mobile: niente rimbalzo, niente zoom involontario. */
+    /* Safari mobile: niente zoom involontario, niente rimbalzo elastico. Il
+       blocco va su entrambi gli elementi, su html da solo iOS lo ignora. */
     -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
   }
   body {
     font-family: var(--font-corpo);
     color: var(--color-inchiostro);
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
+    /* Nessun contenuto puo' sporgere di lato: e' li' che nascono gli
+       scorrimenti orizzontali involontari. */
+    overflow-x: hidden;
   }
   h1, h2, .titolo {
     font-family: var(--font-titolo);
