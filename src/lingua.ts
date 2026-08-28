@@ -67,6 +67,8 @@ const testi = {
     oreFa: (n: number) => `${n} h fa`,
 
     siamoIn: (n: number) => (n === 1 ? 'Ci sei solo tu, per ora' : `Siamo in ${n}`),
+    chiSei: 'Chi dei due sei?',
+    altroNome: 'Sono qualcun altro',
     giaPresente: 'Questa l’avevi già caricata',
     erroreRete: 'La rete qui non collabora. Riprovo da solo.',
     erroreTroppoGrande: 'Questo file è troppo grande per essere caricato.',
@@ -151,6 +153,8 @@ const testi = {
     oreFa: (n: number) => `${n} h ago`,
 
     siamoIn: (n: number) => (n === 1 ? 'Just you, so far' : `${n} of us here`),
+    chiSei: 'Which of you two?',
+    altroNome: 'I am someone else',
     giaPresente: 'You had already uploaded this one',
     erroreRete: 'The network is not helping. I will keep trying.',
     erroreTroppoGrande: 'This file is too large to upload.',
