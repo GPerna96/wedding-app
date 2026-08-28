@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "rita-e-francesco",
+  "name": "wedding-app",
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-25",
   "observability": { "enabled": true },
@@ -22,14 +22,14 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "rita-francesco",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_name": "wedding-app",
+      "database_id": "1209a325-0518-4979-802f-7a87723328cd",
       "migrations_dir": "./migrations"
     }
   ],
 
   "r2_buckets": [
-    { "binding": "MEDIA", "bucket_name": "rita-francesco" }
+    { "binding": "MEDIA", "bucket_name": "wedding-media" }
   ],
 
   "vars": {

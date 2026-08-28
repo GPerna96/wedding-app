@@ -11,7 +11,7 @@ D1 per i dati e con R2 per i media.
 
 ```bash
 pnpm install
-pnpm wrangler d1 migrations apply rita-francesco --local
+pnpm wrangler d1 migrations apply wedding-app --local
 pnpm wrangler dev --port 8799     # API + assets
 pnpm dev                          # opzionale: Vite con hot reload, fa da proxy al Worker
 ```
@@ -21,9 +21,9 @@ I segreti locali stanno in `.dev.vars` (non versionato).
 ## Deploy
 
 ```bash
-pnpm wrangler d1 create rita-francesco      # copia il database_id in wrangler.jsonc
-pnpm wrangler r2 bucket create rita-francesco
-pnpm wrangler d1 migrations apply rita-francesco --remote
+pnpm wrangler d1 create wedding-app      # copia il database_id in wrangler.jsonc
+pnpm wrangler r2 bucket create wedding-media
+pnpm wrangler d1 migrations apply wedding-app --remote
 
 pnpm wrangler secret put TOKEN_EVENTO       # finisce nel QR
 pnpm wrangler secret put SEGRETO_COOKIE     # firma i cookie: stringa lunga a caso
@@ -39,5 +39,5 @@ Il QR va generato sull'indirizzo `https://<app>/?k=<TOKEN_EVENTO>`.
 Il traffico in uscita da R2 è gratuito:
 
 ```bash
-rclone sync r2:rita-francesco ./originali -P
+rclone sync r2:wedding-media ./originali -P
 ```
