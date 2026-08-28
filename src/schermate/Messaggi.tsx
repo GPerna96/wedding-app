@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, quando, type MessaggioRiga } from '../api'
+import { api, type MessaggioRiga } from '../api'
+import { t, quando } from '../lingua'
 
 export function Messaggi({ nome }: { nome?: string }) {
   const [elenco, setElenco] = useState<MessaggioRiga[]>([])
@@ -34,16 +35,16 @@ export function Messaggi({ nome }: { nome?: string }) {
   return (
     <div className="min-h-dvh pb-28">
       <header className="sicura-sopra px-5 pb-5 text-center">
-        {nome && <p className="text-salvia text-sm mb-1">Ciao {nome.split(' ')[0]}</p>}
-        <h1 className="titolo text-[28px]">Due parole per loro</h1>
-        <p className="text-fumo text-sm mt-1.5">Rita e Francesco le leggeranno tutte</p>
+        {nome && <p className="text-salvia text-sm mb-1">{t.ciao(nome.split(' ')[0])}</p>}
+        <h1 className="titolo text-[28px]">{t.dueParole}</h1>
+        <p className="text-fumo text-sm mt-1.5">{t.leLeggeranno}</p>
       </header>
 
       <form onSubmit={invia} className="px-4 mb-7 max-w-xl mx-auto">
         <textarea
           value={testo}
           onChange={(e) => setTesto(e.target.value)}
-          placeholder="Scrivi la tua dedica…"
+          placeholder={t.scriviDedica}
           rows={3}
           maxLength={1000}
           className="w-full bg-carta border border-salvia-velo rounded-2xl px-4 py-3
@@ -56,7 +57,7 @@ export function Messaggi({ nome }: { nome?: string }) {
           className="w-full mt-2 bg-salvia text-crema rounded-2xl py-3.5 tracking-wide
                      disabled:opacity-40 active:scale-[0.98] transition-transform"
         >
-          {invio ? 'Invio…' : 'Lascia il messaggio'}
+          {invio ? t.invio : t.lasciaMessaggio}
         </button>
       </form>
 
@@ -71,7 +72,7 @@ export function Messaggi({ nome }: { nome?: string }) {
         ))}
         {elenco.length === 0 && (
           <p className="text-center text-fumo text-[15px] py-12">
-            Nessun messaggio ancora. Comincia tu.
+            {t.nessunMessaggio}
           </p>
         )}
       </div>

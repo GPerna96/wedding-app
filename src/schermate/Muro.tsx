@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, quando, type MediaRiga } from '../api'
+import { api, type MediaRiga } from '../api'
+import { t, quando } from '../lingua'
 import { coda, type Lavoro } from '../upload/coda'
 
 const INTERVALLO = 8000
@@ -72,11 +73,11 @@ export function Muro({ apri, nome, sposi, inPausa }: {
     <div className="min-h-dvh pb-24">
       <header className="sicura-sopra px-5 pb-4 text-center">
         {nome && (
-          <p className="text-salvia text-sm mb-1">Ciao {nome.split(' ')[0]}</p>
+          <p className="text-salvia text-sm mb-1">{t.ciao(nome.split(' ')[0])}</p>
         )}
         <h1 className="titolo text-[28px]">{sposi}</h1>
         <p className="text-fumo text-sm mt-1.5">
-          {elenco.length > 0 ? `${elenco.length} ricordi finora` : 'Il primo ricordo è tuo'}
+          {elenco.length > 0 ? t.ricordiFinora(elenco.length) : t.primoRicordo}
         </p>
       </header>
 
@@ -90,8 +91,8 @@ export function Muro({ apri, nome, sposi, inPausa }: {
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] text-fumo truncate">
                   {l.stato === 'errore'
-                    ? 'Non è andata. Tocca per riprovare.'
-                    : l.stato === 'anteprima' ? 'Preparo…' : 'Sto caricando…'}
+                    ? t.nonEAndata
+                    : l.stato === 'anteprima' ? t.preparo : t.stoCaricando}
                 </p>
                 <div className="h-1 bg-salvia-velo rounded-full mt-1.5 overflow-hidden">
                   <div
@@ -102,7 +103,7 @@ export function Muro({ apri, nome, sposi, inPausa }: {
               </div>
               {l.stato === 'errore' && (
                 <button onClick={() => coda.riprova(l.id)} className="text-[13px] text-salvia px-3 py-2">
-                  Riprova
+                  {t.riprova}
                 </button>
               )}
             </div>
@@ -112,9 +113,9 @@ export function Muro({ apri, nome, sposi, inPausa }: {
 
       {elenco.length === 0 && inCorso.length === 0 ? (
         <div className="px-10 py-24 text-center text-fumo">
-          <p className="titolo text-2xl mb-2.5">Ancora niente</p>
+          <p className="titolo text-2xl mb-2.5">{t.ancoraNiente}</p>
           <p className="text-[15px] leading-relaxed">
-            Scatta qualcosa e sarai il primo ad apparire su questo muro.
+            {t.scattaQualcosa}
           </p>
         </div>
       ) : (
@@ -132,7 +133,7 @@ export function Muro({ apri, nome, sposi, inPausa }: {
               <img
                 src={`/media/anteprima/${m.id}`}
                 loading="lazy"
-                alt={`Caricata da ${m.nome}`}
+                alt={m.nome}
                 className="w-full h-full object-cover"
               />
               {m.tipo === 'video' && (

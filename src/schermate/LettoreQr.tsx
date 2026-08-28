@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from '../lingua'
 
 type Esito = (token: string) => void
 
@@ -72,7 +73,7 @@ export function LettoreQr({ trovato, chiudi }: { trovato: Esito; chiudi: () => v
                 flusso?.getTracks().forEach((t) => t.stop())
                 return trovato(token)
               }
-              setErrore('Questo codice non è quello del matrimonio.')
+              setErrore(t.codiceSbagliato)
             }
           } catch { /* fotogramma saltato, si riprova */ }
           telaio = requestAnimationFrame(guarda)
@@ -82,10 +83,10 @@ export function LettoreQr({ trovato, chiudi }: { trovato: Esito; chiudi: () => v
         const nome = (e as Error).name
         setErrore(
           nome === 'NotAllowedError'
-            ? 'Per leggere il codice serve il permesso della fotocamera. Puoi darlo dalle impostazioni del browser.'
+            ? t.permessoNegato
             : nome === 'NotFoundError'
-              ? 'Non trovo una fotocamera su questo dispositivo.'
-              : 'Non riesco ad aprire la fotocamera.',
+              ? t.nessunaFotocamera
+              : t.fotocameraKo,
         )
         setCerca(false)
       }
@@ -101,8 +102,8 @@ export function LettoreQr({ trovato, chiudi }: { trovato: Esito; chiudi: () => v
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       <div className="sicura-sopra px-4 pb-3 flex items-center justify-between text-white/90">
-        <p className="text-[15px]">Inquadra il codice sul tavolo</p>
-        <button onClick={chiudi} aria-label="Chiudi" className="w-10 h-10 grid place-items-center text-2xl leading-none">
+        <p className="text-[15px]">{t.inquadraSulTavolo}</p>
+        <button onClick={chiudi} aria-label={t.chiudi} className="w-10 h-10 grid place-items-center text-2xl leading-none">
           ×
         </button>
       </div>
@@ -119,7 +120,7 @@ export function LettoreQr({ trovato, chiudi }: { trovato: Esito; chiudi: () => v
         {errore ? (
           <p className="text-white/90 text-[15px] leading-relaxed">{errore}</p>
         ) : (
-          <p className="text-white/60 text-[15px]">{cerca ? 'Cerco il codice…' : 'Trovato!'}</p>
+          <p className="text-white/60 text-[15px]">{cerca ? t.cercoCodice : t.trovato}</p>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { coda } from '../upload/coda'
+import { t } from '../lingua'
 import { useBloccoScorrimento, useTastieraAperta } from '../bloccoScorrimento'
 import { IconaRicordi, IconaMessaggi, IconaFotocamera, IconaGalleria } from './Icone'
 
@@ -58,8 +59,8 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
                 <IconaFotocamera className="w-6 h-6" />
               </span>
               <span className="text-left">
-                <span className="block text-[17px]">Scatta adesso</span>
-                <span className="block text-sm text-fumo">Apre la fotocamera</span>
+                <span className="block text-[17px]">{t.scattaAdesso}</span>
+                <span className="block text-sm text-fumo">{t.apreLaFotocamera}</span>
               </span>
             </button>
             <button
@@ -70,8 +71,8 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
                 <IconaGalleria className="w-6 h-6" />
               </span>
               <span className="text-left">
-                <span className="block text-[17px]">Scegli dal telefono</span>
-                <span className="block text-sm text-fumo">Anche più foto insieme</span>
+                <span className="block text-[17px]">{t.scegliDalTelefono}</span>
+                <span className="block text-sm text-fumo">{t.anchePiuFoto}</span>
               </span>
             </button>
           </div>
@@ -91,13 +92,13 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
           <Scheda
             attiva={vista === 'muro'}
             onClick={() => cambia('muro')}
-            etichetta="Ricordi"
+            etichetta={t.ricordi}
             Icona={IconaRicordi}
           />
 
           <button
             onClick={() => setMenu(true)}
-            aria-label="Aggiungi foto o video"
+            aria-label={t.aggiungiFotoVideo}
             className="w-[68px] h-[68px] -mt-7 rounded-full bg-salvia text-crema
                        grid place-items-center shadow-lg shadow-salvia/30
                        active:scale-95 transition-transform border-4 border-crema"
@@ -108,7 +109,7 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
           <Scheda
             attiva={vista === 'messaggi'}
             onClick={() => cambia('messaggi')}
-            etichetta="Messaggi"
+            etichetta={t.messaggi}
             Icona={IconaMessaggi}
           />
         </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api'
+import { t } from '../lingua'
 import { LettoreQr } from './LettoreQr'
 import { Foglie } from './Foglie'
 
@@ -21,18 +22,14 @@ export function Benvenuto({ sposi, token, entrato }: {
 
   async function invia(e: React.FormEvent) {
     e.preventDefault()
-    if (nome.trim().length < 2) return setErrore('Scrivi il tuo nome per entrare.')
+    if (nome.trim().length < 2) return setErrore(t.scriviNome)
     setInvio(true)
     setErrore(null)
     try {
       const r = await api.entra(codice ?? '', nome)
       entrato(r.nome)
     } catch (err) {
-      setErrore(
-        String(err).includes('token')
-          ? 'Questo link non è valido. Inquadra di nuovo il QR sul tavolo.'
-          : 'Qualcosa non ha funzionato. Riprova.',
-      )
+      setErrore(String(err).includes('token') ? t.linkNonValido : t.qualcosaStorto)
       setInvio(false)
     }
   }
@@ -51,7 +48,7 @@ export function Benvenuto({ sposi, token, entrato }: {
       <Foglie />
       <div className="relative z-10 flex flex-col items-center w-full">
       <p className="titolo text-fumo tracking-[0.3em] text-[13px] uppercase mb-8">
-        Il matrimonio di
+        {t.matrimonioDi}
       </p>
 
       <h1 className="titolo text-inchiostro leading-[1.05]">
@@ -67,39 +64,36 @@ export function Benvenuto({ sposi, token, entrato }: {
            far scrivere un nome per poi rifiutarlo. */
         <div className="max-w-xs">
           <p className="text-fumo text-[17px] leading-relaxed mb-7">
-            Le foto e i video di oggi finiscono tutti qui, insieme a quelli degli
-            altri invitati.
+{t.invitoSenzaCodice}
           </p>
           <div className="bg-carta border border-salvia-velo rounded-2xl px-6 py-7">
-            <p className="titolo text-2xl mb-2.5">Inquadra il codice</p>
+            <p className="titolo text-2xl mb-2.5">{t.inquadraCodice}</p>
             <p className="text-fumo text-[15px] leading-relaxed mb-6">
-              Trovi il QR sul tuo tavolo.
+              {t.qrSulTavolo}
             </p>
             <button
               onClick={() => setLettore(true)}
               className="w-full bg-salvia text-crema rounded-2xl py-4 text-[17px] tracking-wide
                          active:scale-[0.98] transition-transform"
             >
-              Apri la fotocamera
+              {t.apriFotocamera}
             </button>
           </div>
           <p className="text-fumo/70 text-[13px] mt-5 leading-relaxed">
-            Puoi anche inquadrarlo con la fotocamera del telefono: l'app si apre
-            da sola.
+{t.ancheConFotocamera}
           </p>
         </div>
       ) : (
       <>
       <p className="text-fumo text-[17px] leading-relaxed max-w-xs mb-8">
-        Le foto e i video che scatti oggi finiscono tutti qui, insieme a quelli
-        degli altri invitati. Come ti chiami?
+{t.invitoNome}
       </p>
 
       <form onSubmit={invia} className="w-full max-w-xs">
         <input
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          placeholder="Il tuo nome"
+          placeholder={t.tuoNome}
           autoComplete="name"
           autoFocus
           className="w-full bg-carta border border-salvia-velo rounded-2xl px-5 py-4
@@ -115,7 +109,7 @@ export function Benvenuto({ sposi, token, entrato }: {
           className="w-full mt-4 bg-salvia text-crema rounded-2xl py-4 text-[17px] tracking-wide
                      disabled:opacity-50 active:scale-[0.98] transition-transform"
         >
-          {invio ? 'Un attimo…' : 'Entra'}
+          {invio ? t.unAttimo : t.entra}
         </button>
       </form>
       </>

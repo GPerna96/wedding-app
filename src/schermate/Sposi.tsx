@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { quando } from '../api'
+import { quando } from '../lingua'
 
 type Voce = {
   id: string; tipo?: string; stato?: string; nascosto: number

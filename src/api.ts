@@ -51,12 +51,3 @@ export const api = {
       if (!r.ok) throw new Error(String(r.status))
     }),
 }
-
-export function quando(ms: number) {
-  const min = Math.floor((Date.now() - ms) / 60000)
-  if (min < 1) return 'adesso'
-  if (min < 60) return `${min} min fa`
-  const ore = Math.floor(min / 60)
-  if (ore < 24) return `${ore} h fa`
-  return new Date(ms).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
-}

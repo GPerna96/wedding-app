@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IconaInstalla } from './schermate/Icone'
+import { t } from './lingua'
 
 type EventoInstallazione = Event & { prompt: () => Promise<void> }
 
@@ -49,22 +50,20 @@ export function Installa({ attivo }: { attivo: boolean }) {
                     rounded-2xl shadow-lg px-4 py-3.5 flex items-start gap-3 comparsa">
       <span className="text-salvia mt-0.5"><IconaInstalla className="w-6 h-6" /></span>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-medium">Tienila a portata di mano</p>
+        <p className="text-[15px] font-medium">{t.tienilaAMano}</p>
         <p className="text-[13px] text-fumo leading-relaxed mt-0.5">
-          {evento
-            ? 'Aggiungila alla schermata iniziale: si apre come un’app, senza cercare il link.'
-            : 'Tocca Condividi in basso, poi «Aggiungi alla schermata Home».'}
+          {evento ? t.installaAndroid : t.installaIos}
         </p>
         {evento && (
           <button
             onClick={() => { evento.prompt(); chiudi() }}
             className="mt-2.5 bg-salvia text-crema rounded-xl px-4 py-2 text-sm"
           >
-            Aggiungi
+            {t.aggiungi}
           </button>
         )}
       </div>
-      <button onClick={chiudi} aria-label="Chiudi" className="text-fumo/50 text-lg leading-none px-1">
+      <button onClick={chiudi} aria-label={t.chiudi} className="text-fumo/50 text-lg leading-none px-1">
         ×
       </button>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { quando, type MediaRiga } from '../api'
+import { type MediaRiga } from '../api'
+import { t, quando } from '../lingua'
 import { useBloccoScorrimento } from '../bloccoScorrimento'
 
 export function Visore({ elenco, indice, chiudi }: {
@@ -44,7 +45,7 @@ export function Visore({ elenco, indice, chiudi }: {
           <p className="text-[15px] font-medium truncate">{m.nome}</p>
           <p className="text-[12px] text-white/50">{quando(m.creato_il)}</p>
         </div>
-        <button onClick={chiudi} className="w-10 h-10 grid place-items-center text-2xl leading-none">
+        <button onClick={chiudi} aria-label={t.chiudi} className="w-10 h-10 grid place-items-center text-2xl leading-none">
           ×
         </button>
       </div>
@@ -64,7 +65,7 @@ export function Visore({ elenco, indice, chiudi }: {
           <img
             key={m.id}
             src={`/media/originale/${m.id}`}
-            alt={`Caricata da ${m.nome}`}
+            alt={m.nome}
             className="max-w-full max-h-full object-contain"
           />
         )}
@@ -76,7 +77,7 @@ export function Visore({ elenco, indice, chiudi }: {
           disabled={i === 0}
           className="px-4 py-2 disabled:opacity-25"
         >
-          ← Prima
+          {t.prima}
         </button>
         <span>{i + 1} / {elenco.length}</span>
         <button
@@ -84,7 +85,7 @@ export function Visore({ elenco, indice, chiudi }: {
           disabled={i === elenco.length - 1}
           className="px-4 py-2 disabled:opacity-25"
         >
-          Dopo →
+          {t.dopo}
         </button>
       </div>
     </div>
