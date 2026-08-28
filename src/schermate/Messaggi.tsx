@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, quando, type MessaggioRiga } from '../api'
 
-export function Messaggi() {
+export function Messaggi({ nome }: { nome?: string }) {
   const [elenco, setElenco] = useState<MessaggioRiga[]>([])
   const [testo, setTesto] = useState('')
   const [invio, setInvio] = useState(false)
@@ -34,11 +34,12 @@ export function Messaggi() {
   return (
     <div className="min-h-dvh pb-28">
       <header className="sicura-sopra px-5 pb-5 text-center">
+        {nome && <p className="text-salvia text-sm mb-1">Ciao {nome.split(' ')[0]}</p>}
         <h1 className="titolo text-[28px]">Due parole per loro</h1>
         <p className="text-fumo text-sm mt-1.5">Rita e Francesco le leggeranno tutte</p>
       </header>
 
-      <form onSubmit={invia} className="px-4 mb-7">
+      <form onSubmit={invia} className="px-4 mb-7 max-w-xl mx-auto">
         <textarea
           value={testo}
           onChange={(e) => setTesto(e.target.value)}
@@ -59,7 +60,7 @@ export function Messaggi() {
         </button>
       </form>
 
-      <div className="px-4 space-y-3">
+      <div className="px-4 space-y-3 max-w-xl mx-auto">
         {elenco.map((m) => (
           <div key={m.id} className="bg-carta border border-salvia-velo rounded-2xl px-5 py-4 comparsa">
             <p className="text-[17px] leading-relaxed whitespace-pre-wrap">{m.testo}</p>

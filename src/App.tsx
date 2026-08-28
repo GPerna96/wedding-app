@@ -85,8 +85,17 @@ export function App() {
   return (
     <>
       {vista === 'muro'
-        ? <Muro apri={(i, elenco) => setVisore({ i, elenco })} />
-        : <Messaggi />}
+        ? (
+          <Muro
+            apri={(i, elenco) => setVisore({ i, elenco })}
+            nome={io.nome}
+            sposi={io.sposi}
+            // Col visore aperto il muro non ha nessuno che lo guardi: inutile
+            // continuare a interrogare il server.
+            inPausa={!!visore}
+          />
+        )
+        : <Messaggi nome={io.nome} />}
 
       {visore && (
         <Visore elenco={visore.elenco} indice={visore.i} chiudi={() => setVisore(null)} />

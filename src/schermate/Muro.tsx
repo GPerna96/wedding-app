@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, quando, type MediaRiga } from '../api'
 import { coda, type Lavoro } from '../upload/coda'
 
 const INTERVALLO = 8000
 
-export function Muro({ apri }: { apri: (indice: number, elenco: MediaRiga[]) => void }) {
+export function Muro({ apri, nome, sposi, inPausa }: {
+  apri: (indice: number, elenco: MediaRiga[]) => void
+  nome?: string
+  sposi: string
+  inPausa: boolean
+}) {
   const [elenco, setElenco] = useState<MediaRiga[]>([])
   const [lavori, setLavori] = useState<Lavoro[]>([])
+  // Momento del piu' recente gia' in elenco: e' il segnalibro del polling.
+  const ultimoVisto = useRef(0)
 
   useEffect(() => {
     const stacca = coda.ascolta(setLavori)
@@ -16,21 +23,40 @@ export function Muro({ apri }: { apri: (indice: number, elenco: MediaRiga[]) => 
   // Polling invece di WebSocket: nessuna connessione da tenere viva, nessuna
   // riconnessione da gestire quando il wifi della sala fa i capricci.
   useEffect(() => {
+    if (inPausa) return
     let vivo = true
 
-    async function ricarica() {
+    // Il giro periodico chiede solo cio' che e' arrivato dopo l'ultimo che
+    // abbiamo: a fine serata l'elenco intero sono decine di kB, e riscaricarlo
+    // ogni otto secondi per ogni ospite non ha senso.
+    async function ricarica(completo = false) {
       try {
-        const r = await api.media()
-        if (vivo) setElenco(r.media)
+        const daQuando = completo ? 0 : ultimoVisto.current
+        const r = await api.media(daQuando)
+        if (!vivo) return
+
+        if (completo || daQuando === 0) {
+          setElenco(r.media)
+        } else if (r.media.length) {
+          setElenco((prima) => {
+            const visti = new Set(prima.map((m) => m.id))
+            const nuovi = r.media.filter((m) => !visti.has(m.id))
+            return nuovi.length ? [...nuovi, ...prima] : prima
+          })
+        }
+        if (r.media.length) {
+          ultimoVisto.current = Math.max(ultimoVisto.current, ...r.media.map((m) => m.creato_il))
+        }
       } catch { /* la prossima passata ci riprova */ }
     }
 
-    ricarica()
+    ricarica(true)
     const t = setInterval(() => {
       if (document.visibilityState === 'visible') ricarica()
     }, INTERVALLO)
-    // Tornando sull'app si aggiorna subito, senza aspettare il giro.
-    const alRitorno = () => document.visibilityState === 'visible' && ricarica()
+    // Tornando sull'app si riprende tutto: nel frattempo gli sposi potrebbero
+    // aver nascosto qualcosa, e l'incrementale non se ne accorgerebbe.
+    const alRitorno = () => document.visibilityState === 'visible' && ricarica(true)
     document.addEventListener('visibilitychange', alRitorno)
 
     return () => {
@@ -38,14 +64,17 @@ export function Muro({ apri }: { apri: (indice: number, elenco: MediaRiga[]) => 
       clearInterval(t)
       document.removeEventListener('visibilitychange', alRitorno)
     }
-  }, [lavori.filter((l) => l.stato === 'fatto').length])
+  }, [inPausa, lavori.filter((l) => l.stato === 'fatto').length])
 
   const inCorso = lavori.filter((l) => l.stato !== 'fatto')
 
   return (
     <div className="min-h-dvh pb-24">
       <header className="sicura-sopra px-5 pb-4 text-center">
-        <h1 className="titolo text-[28px]">Rita &amp; Francesco</h1>
+        {nome && (
+          <p className="text-salvia text-sm mb-1">Ciao {nome.split(' ')[0]}</p>
+        )}
+        <h1 className="titolo text-[28px]">{sposi}</h1>
         <p className="text-fumo text-sm mt-1.5">
           {elenco.length > 0 ? `${elenco.length} ricordi finora` : 'Il primo ricordo è tuo'}
         </p>
@@ -89,7 +118,7 @@ export function Muro({ apri }: { apri: (indice: number, elenco: MediaRiga[]) => 
           </p>
         </div>
       ) : (
-        <div className="px-3 columns-2 gap-3 [&>*]:mb-3">
+        <div className="px-3 columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3 [&>*]:mb-3 max-w-6xl mx-auto">
           {elenco.map((m, i) => (
             <button
               key={m.id}
