@@ -5,6 +5,10 @@
   "compatibility_date": "2026-08-25",
   "observability": { "enabled": true },
 
+  // Compila la SPA prima di ogni deploy: vale sia da CLI sia per le build
+  // automatiche collegate a GitHub.
+  "build": { "command": "pnpm vite build" },
+
   // La SPA compilata da Vite. run_worker_first: il Worker vede /api/* e /media/*,
   // tutto il resto lo servono gli asset statici; not_found_handling rimanda a
   // index.html cosi' le rotte lato client (/sposi) funzionano al reload.
