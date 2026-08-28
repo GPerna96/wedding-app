@@ -36,17 +36,18 @@ export function App() {
 
   useEffect(() => {
     (async () => {
-      // L'app installata su iOS parte da un indirizzo che si porta dietro la
-      // sessione, perche' li' i cookie di Safari non arrivano.
-      const sessione = new URLSearchParams(location.search).get('s')
-      if (sessione) {
+      // L'app installata su iOS parte con un biglietto nel frammento, perche'
+      // li' i cookie di Safari non arrivano. Il frammento resta nel browser:
+      // non viene inviato al server insieme all'indirizzo.
+      const biglietto = new URLSearchParams(location.hash.slice(1)).get('s')
+      if (biglietto) {
+        history.replaceState(null, '', location.pathname)
         try {
-          const r = await fetch('/api/riprendi', {
+          await fetch('/api/riprendi', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sessione }),
+            body: JSON.stringify({ sessione: biglietto }),
           })
-          if (r.ok) history.replaceState(null, '', location.pathname)
         } catch { /* si ripiega sul controllo normale */ }
       }
       try {
