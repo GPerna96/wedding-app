@@ -39,7 +39,7 @@ export const api = {
     return r.json() as Promise<{ dentro: true; nome: string }>
   },
 
-  media: (dopo = 0) => leggi<{ media: MediaRiga[] }>(`/api/media?dopo=${dopo}`),
+  media: (dopo = 0) => leggi<{ media: MediaRiga[]; ospiti: number }>(`/api/media?dopo=${dopo}`),
 
   nascondi: (tipo: 'media' | 'messaggi', id: string, nascosto: boolean) =>
     fetch('/api/sposi/nascondi', {

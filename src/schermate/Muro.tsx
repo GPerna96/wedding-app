@@ -15,12 +15,27 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
 }) {
   const [elenco, setElenco] = useState<MediaRiga[]>([])
   const [lavori, setLavori] = useState<Lavoro[]>([])
+  const [quanti, setQuanti] = useState(0)
+  const [inRete, setInRete] = useState(() => navigator.onLine)
   // Momento del piu' recente gia' in elenco: e' il segnalibro del polling.
   const ultimoVisto = useRef(0)
 
   useEffect(() => {
     const stacca = coda.ascolta(setLavori)
     return () => { stacca() }
+  }, [])
+
+  // La rete che va e viene e' la norma in una sala: meglio dirlo che lasciare
+  // le barre ferme senza spiegazioni.
+  useEffect(() => {
+    const su = () => setInRete(true)
+    const giu = () => setInRete(false)
+    window.addEventListener('online', su)
+    window.addEventListener('offline', giu)
+    return () => {
+      window.removeEventListener('online', su)
+      window.removeEventListener('offline', giu)
+    }
   }, [])
 
   // Polling invece di WebSocket: nessuna connessione da tenere viva, nessuna
@@ -47,6 +62,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
             return nuovi.length ? [...nuovi, ...prima] : prima
           })
         }
+        setQuanti(r.ospiti)
         if (r.media.length) {
           ultimoVisto.current = Math.max(ultimoVisto.current, ...r.media.map((m) => m.creato_il))
         }
@@ -103,8 +119,15 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
         <h1 className="titolo text-[28px]">{sposi}</h1>
         <p className="text-fumo text-sm mt-1.5">
           {elenco.length > 0 ? t.ricordiFinora(elenco.length) : t.primoRicordo}
+          {quanti > 0 && <span className="text-fumo/60"> · {t.siamoIn(quanti)}</span>}
         </p>
       </header>
+
+      {!inRete && (
+        <div className="mx-4 mb-3 bg-amber-100/70 border border-amber-300/60 rounded-xl px-4 py-3">
+          <p className="text-[13px] text-amber-900/80 leading-relaxed">{t.senzaRete}</p>
+        </div>
+      )}
 
       {inCorso.length > 0 && (
         <div className="px-4 mb-3 space-y-2">
@@ -116,17 +139,23 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] text-fumo truncate">
                   {l.stato === 'errore'
-                    ? t.nonEAndata
+                    ? (l.motivo === 'rete' ? t.erroreRete
+                      : l.motivo === 'troppoGrande' ? t.erroreTroppoGrande
+                      : l.motivo === 'server' ? t.erroreServer
+                      : t.erroreIgnoto)
+                    : l.stato === 'giaPresente' ? t.giaPresente
                     : l.stato === 'anteprima' ? t.preparo : t.stoCaricando}
                 </p>
+                {l.stato !== 'giaPresente' && (
                 <div className="h-1 bg-salvia-velo rounded-full mt-1.5 overflow-hidden">
                   <div
                     className="h-full bg-salvia transition-[width] duration-300"
                     style={{ width: `${Math.round(l.progresso * 100)}%` }}
                   />
                 </div>
+                )}
               </div>
-              {l.stato === 'errore' && (
+              {l.stato === 'errore' && l.motivo !== 'troppoGrande' && (
                 <button onClick={() => coda.riprova(l.id)} className="text-[13px] text-salvia px-3 py-2">
                   {t.riprova}
                 </button>

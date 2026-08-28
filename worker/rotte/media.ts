@@ -43,12 +43,21 @@ media.use('/media/*', richiedeSessione)
 media.post('/api/upload/inizia', async (c) => {
   const b = await c.req.json<{
     tipo: string; nomeFile?: string; mime?: string; byte: number
-    larghezza?: number; altezza?: number; durataMs?: number
+    larghezza?: number; altezza?: number; durataMs?: number; impronta?: string
   }>()
 
   if (!TIPI.has(b.tipo)) return c.json({ errore: 'tipo_non_valido' }, 400)
   if (!Number.isFinite(b.byte) || b.byte <= 0 || b.byte > MAX_BYTE)
     return c.json({ errore: 'dimensione_non_valida' }, 400)
+
+  // Gia' visto? Si risponde di si' senza rifare il giro: un doppio tocco o una
+  // pagina ricaricata a meta' invio non devono sdoppiare il ricordo.
+  if (b.impronta) {
+    const gemello = await c.env.DB.prepare(
+      "select id from media where impronta = ? and stato = 'completo'",
+    ).bind(b.impronta).first<{ id: string }>()
+    if (gemello) return c.json({ id: gemello.id, multipart: false, giaPresente: true })
+  }
 
   const id = crypto.randomUUID()
   const nome = nomePulito(b.nomeFile ?? (b.tipo === 'foto' ? 'foto.jpg' : 'video.mp4'))
@@ -68,12 +77,13 @@ media.post('/api/upload/inizia', async (c) => {
 
   await c.env.DB.prepare(
     `insert into media (id, ospite_id, tipo, chiave_originale, chiave_anteprima,
-                        upload_id, larghezza, altezza, durata_ms, byte, nome_file, creato_il)
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        upload_id, larghezza, altezza, durata_ms, byte, nome_file,
+                        impronta, creato_il)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).bind(
     id, c.var.ospite.id, b.tipo, chiaveOriginale, chiaveAnteprima,
     uploadId, b.larghezza ?? null, b.altezza ?? null, b.durataMs ?? null,
-    b.byte, nome, Date.now(),
+    b.byte, nome, b.impronta ?? null, Date.now(),
   ).run()
 
   return c.json({ id, multipart })
@@ -111,9 +121,23 @@ media.put('/api/upload/diretto/:id', async (c) => {
   await c.env.MEDIA.put(m.chiave_originale, c.req.raw.body, {
     httpMetadata: { contentType: mimeSicuro(c.req.header('x-tipo-file')) },
   })
-  await c.env.DB.prepare("update media set stato = 'completo' where id = ?").bind(m.id).run()
+  await segnaCompleto(c, m.id)
   return c.json({ ok: true })
 })
+
+/**
+ * Chiude il caricamento. Se nel frattempo qualcun altro ha completato lo stesso
+ * file, l'indice si oppone: il doppione resta indietro e sparisce dal muro
+ * invece di far fallire l'invio a chi ha solo avuto la sfortuna di arrivare
+ * secondo.
+ */
+async function segnaCompleto(c: any, id: string) {
+  try {
+    await c.env.DB.prepare("update media set stato = 'completo' where id = ?").bind(id).run()
+  } catch {
+    await c.env.DB.prepare('delete from media where id = ?').bind(id).run()
+  }
+}
 
 /**
  * Una parte del multipart. Il corpo passa in streaming attraverso il Worker
@@ -139,7 +163,7 @@ media.post('/api/upload/completa/:id', async (c) => {
   const mp = c.env.MEDIA.resumeMultipartUpload(m.chiave_originale, m.upload_id)
   await mp.complete(parti.map((p) => ({ partNumber: p.n, etag: p.etag })))
 
-  await c.env.DB.prepare("update media set stato = 'completo' where id = ?").bind(m.id).run()
+  await segnaCompleto(c, m.id)
   return c.json({ ok: true })
 })
 
@@ -158,7 +182,13 @@ media.get('/api/media', async (c) => {
       order by m.creato_il desc
       limit 300`,
   ).bind(admin ? 1 : 0, dopo).all()
-  return c.json({ media: results })
+
+  // Quanti sono entrati finora: si vede sotto il titolo e da' il senso della
+  // festa collettiva a chi apre l'app da solo al proprio tavolo.
+  const quanti = await c.env.DB.prepare('select count(*) as n from ospiti')
+    .first<{ n: number }>()
+
+  return c.json({ media: results, ospiti: quanti?.n ?? 0 })
 })
 
 /** Serve anteprime e originali da R2, con supporto Range per il seek dei video. */
@@ -185,6 +215,14 @@ media.get('/media/:genere/:id', async (c) => {
 
   const h = new Headers()
   oggetto.writeHttpMetadata(h)
+  // Con ?scarica il browser salva invece di aprire: e' cosi' che un invitato
+  // si porta via lo scatto di un altro.
+  if (c.req.query('scarica') !== undefined && genere === 'originale') {
+    const riga2 = await c.env.DB.prepare('select nome_file from media where id = ?')
+      .bind(c.req.param('id')).first<{ nome_file: string }>()
+    const nome = (riga2?.nome_file || 'ricordo').replace(/["\\]/g, '')
+    h.set('content-disposition', `attachment; filename="${nome}"`)
+  }
   // Doppia cintura: tipo passato al setaccio anche in uscita, e niente sniffing.
   h.set('content-type', genere === 'anteprima'
     ? 'image/webp'

@@ -45,9 +45,24 @@ export function Visore({ elenco, indice, chiudi }: {
           <p className="text-[15px] font-medium truncate">{m.nome}</p>
           <p className="text-[12px] text-white/50">{quando(m.creato_il)}</p>
         </div>
-        <button onClick={chiudi} aria-label={t.chiudi} className="w-10 h-10 grid place-items-center text-2xl leading-none">
-          ×
-        </button>
+        <div className="flex items-center gap-1">
+          {/* download: il browser salva invece di aprire, grazie all'intestazione
+              che il server aggiunge quando vede il parametro. */}
+          <a
+            href={`/media/originale/${m.id}?scarica`}
+            download
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/12 text-[13px]"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor"
+                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 4v11M8 11.5l4 4 4-4M5 19.5h14" />
+            </svg>
+            {t.scaricaFoto}
+          </a>
+          <button onClick={chiudi} aria-label={t.chiudi} className="w-10 h-10 grid place-items-center text-2xl leading-none">
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 grid place-items-center overflow-hidden">

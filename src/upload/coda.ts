@@ -1,11 +1,35 @@
 import { creaAnteprima } from './anteprima'
 
+/**
+ * Impronta del file, per riconoscerlo se torna una seconda volta.
+ *
+ * Non passa dal contenuto intero: su un video da mezzo giga ci vorrebbero
+ * secondi e il telefono si scalderebbe per nulla. Bastano misura, data di
+ * scatto e i primi 256 kB, che due riprese diverse non hanno mai uguali.
+ */
+async function impronta(file: File): Promise<string | undefined> {
+  try {
+    const testa = new Uint8Array(await file.slice(0, 262144).arrayBuffer())
+    const etichetta = new TextEncoder().encode(`${file.size}:${file.lastModified}:${file.type}`)
+    const insieme = new Uint8Array(etichetta.length + testa.length)
+    insieme.set(etichetta)
+    insieme.set(testa, etichetta.length)
+    const somma = await crypto.subtle.digest('SHA-256', insieme)
+    return [...new Uint8Array(somma)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return undefined   // senza impronta si carica lo stesso, al massimo si duplica
+  }
+}
+
 const PARTE = 10 * 1024 * 1024   // 10 MB: sta largo sotto il limite di corpo richiesta
 const SOGLIA_MULTIPART = 10 * 1024 * 1024
 const TENTATIVI = 4
 const PARALLELI = 2
 
-export type StatoUpload = 'attesa' | 'anteprima' | 'invio' | 'fatto' | 'errore'
+export type StatoUpload = 'attesa' | 'anteprima' | 'invio' | 'fatto' | 'errore' | 'giaPresente'
+
+/** Cosa e' andato storto, in termini che abbiano senso per un invitato. */
+export type Motivo = 'rete' | 'troppoGrande' | 'server' | 'ignoto'
 
 export type Lavoro = {
   id: string           // id locale finche' il server non ne assegna uno
@@ -15,7 +39,7 @@ export type Lavoro = {
   stato: StatoUpload
   progresso: number    // 0..1
   anteprimaLocale?: string
-  errore?: string
+  motivo?: Motivo
 }
 
 type Ascoltatore = (lavori: Lavoro[]) => void
@@ -27,6 +51,8 @@ async function conRitentativi<T>(azione: () => Promise<T>, quante = TENTATIVI): 
       return await azione()
     } catch (e) {
       ultimo = e
+      // Su un rifiuto definitivo insistere e' solo tempo perso.
+      if (e instanceof ErroreInvio && e.definitivo) throw e
       // Attesa crescente: 0.5s, 1s, 2s. Una rete da sala ricevimenti si riprende da sola.
       await new Promise((r) => setTimeout(r, 500 * 2 ** i))
     }
@@ -34,8 +60,20 @@ async function conRitentativi<T>(azione: () => Promise<T>, quante = TENTATIVI): 
   throw ultimo
 }
 
+class ErroreInvio extends Error {
+  constructor(readonly motivo: Motivo, readonly definitivo = false) {
+    super(motivo)
+  }
+}
+
 async function json<T>(r: Response): Promise<T> {
-  if (!r.ok) throw new Error(`${r.status}`)
+  if (!r.ok) {
+    // 413 e 507: il file non ci sta o lo spazio e' finito. Ritentare non serve.
+    if (r.status === 413) throw new ErroreInvio('troppoGrande', true)
+    if (r.status === 507 || r.status === 429) throw new ErroreInvio('server', true)
+    if (r.status >= 500) throw new ErroreInvio('server')
+    throw new ErroreInvio('ignoto', r.status >= 400 && r.status < 500)
+  }
   return r.json() as Promise<T>
 }
 
@@ -77,7 +115,7 @@ export class Coda {
   }
 
   riprova(id: string) {
-    this.aggiorna(id, { stato: 'attesa', progresso: 0, errore: undefined })
+    this.aggiorna(id, { stato: 'attesa', progresso: 0, motivo: undefined })
     this.pompa()
   }
 
@@ -92,7 +130,10 @@ export class Coda {
       this.attivi++
       prossimo.stato = 'anteprima'
       this.esegui(prossimo)
-        .catch((e) => this.aggiorna(prossimo.id, { stato: 'errore', errore: String(e) }))
+        .catch((e) => this.aggiorna(prossimo.id, {
+          stato: 'errore',
+          motivo: e instanceof ErroreInvio ? e.motivo : (navigator.onLine ? 'ignoto' : 'rete'),
+        }))
         .finally(() => {
           this.attivi--
           this.pompa()
@@ -106,8 +147,9 @@ export class Coda {
     const ant = await creaAnteprima(l.file)
     this.aggiorna(l.id, { anteprimaLocale: URL.createObjectURL(ant.blob), progresso: 0.05 })
 
-    // 2. Apri la pratica lato server.
-    const { id: idServer, multipart } = await conRitentativi(() =>
+    // 2. Apri la pratica lato server, dicendo di che file si tratta.
+    const marchio = await impronta(l.file)
+    const risposta = await conRitentativi(() =>
       fetch('/api/upload/inizia', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -116,12 +158,20 @@ export class Coda {
           nomeFile: l.file.name,
           mime: l.file.type,
           byte: l.file.size,
+          impronta: marchio,
           larghezza: ant.larghezza,
           altezza: ant.altezza,
           durataMs: ant.durataMs,
         }),
-      }).then(json<{ id: string; multipart: boolean }>),
+      }).then(json<{ id: string; multipart: boolean; giaPresente?: boolean }>),
     )
+
+    // Questo scatto c'e' gia': meglio dirlo che caricarlo una seconda volta.
+    if (risposta.giaPresente) {
+      this.aggiorna(l.id, { stato: 'giaPresente', progresso: 1 })
+      return
+    }
+    const { id: idServer, multipart } = risposta
     this.aggiorna(l.id, { idServer, stato: 'invio', progresso: 0.1 })
 
     // 3. Prima l'anteprima: e' leggera, e fa comparire subito la foto nel muro.

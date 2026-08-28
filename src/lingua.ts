@@ -66,6 +66,15 @@ const testi = {
     minFa: (n: number) => `${n} min fa`,
     oreFa: (n: number) => `${n} h fa`,
 
+    siamoIn: (n: number) => (n === 1 ? 'Ci sei solo tu, per ora' : `Siamo in ${n}`),
+    giaPresente: 'Questa l’avevi già caricata',
+    erroreRete: 'La rete qui non collabora. Riprovo da solo.',
+    erroreTroppoGrande: 'Questo file è troppo grande per essere caricato.',
+    erroreServer: 'Il server non risponde. Riprova fra poco.',
+    erroreIgnoto: 'Non è andata. Tocca per riprovare.',
+    senzaRete: 'Sei senza connessione. I caricamenti riprendono da soli appena torna.',
+    scaricaFoto: 'Scarica',
+
     accessoSposi: 'Accesso sposi',
     modoSposi: 'Sei entrato come sposo',
     scaricaTutto: 'Scarica tutti gli originali',
@@ -140,6 +149,15 @@ const testi = {
     adesso: 'just now',
     minFa: (n: number) => `${n} min ago`,
     oreFa: (n: number) => `${n} h ago`,
+
+    siamoIn: (n: number) => (n === 1 ? 'Just you, so far' : `${n} of us here`),
+    giaPresente: 'You had already uploaded this one',
+    erroreRete: 'The network is not helping. I will keep trying.',
+    erroreTroppoGrande: 'This file is too large to upload.',
+    erroreServer: 'The server is not responding. Try again shortly.',
+    erroreIgnoto: 'That did not work. Tap to try again.',
+    senzaRete: 'You are offline. Uploads resume by themselves when the connection is back.',
+    scaricaFoto: 'Save',
 
     accessoSposi: 'Couple’s access',
     modoSposi: 'You are signed in as the couple',
