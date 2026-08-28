@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, quando, type MediaRiga } from '../api'
 import { coda, type Lavoro } from '../upload/coda'
 
@@ -7,7 +7,6 @@ const INTERVALLO = 8000
 export function Muro({ apri }: { apri: (indice: number, elenco: MediaRiga[]) => void }) {
   const [elenco, setElenco] = useState<MediaRiga[]>([])
   const [lavori, setLavori] = useState<Lavoro[]>([])
-  const scelta = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const stacca = coda.ascolta(setLavori)
@@ -44,8 +43,8 @@ export function Muro({ apri }: { apri: (indice: number, elenco: MediaRiga[]) => 
   const inCorso = lavori.filter((l) => l.stato !== 'fatto')
 
   return (
-    <div className="min-h-dvh pb-28">
-      <header className="sicura-sopra px-5 pb-4 text-center mt-11">
+    <div className="min-h-dvh pb-24">
+      <header className="sicura-sopra px-5 pb-4 text-center">
         <h1 className="titolo text-2xl">Rita &amp; Francesco</h1>
         <p className="text-fumo text-xs mt-1">
           {elenco.length > 0 ? `${elenco.length} ricordi finora` : 'Il primo ricordo è tuo'}
@@ -123,29 +122,6 @@ export function Muro({ apri }: { apri: (indice: number, elenco: MediaRiga[]) => 
         </div>
       )}
 
-      <input
-        ref={scelta}
-        type="file"
-        accept="image/*,video/*"
-        multiple
-        hidden
-        onChange={(e) => {
-          const files = Array.from(e.target.files ?? [])
-          if (files.length) coda.aggiungi(files)
-          e.target.value = ''
-        }}
-      />
-
-      <div className="fixed inset-x-0 bottom-0 sicura-sotto px-5 pt-6
-                      bg-gradient-to-t from-crema via-crema to-transparent">
-        <button
-          onClick={() => scelta.current?.click()}
-          className="w-full bg-salvia text-crema rounded-2xl py-4 tracking-wide
-                     shadow-lg shadow-salvia/20 active:scale-[0.98] transition-transform"
-        >
-          Aggiungi foto o video
-        </button>
-      </div>
     </div>
   )
 }

@@ -5,6 +5,8 @@ import { Muro } from './schermate/Muro'
 import { Visore } from './schermate/Visore'
 import { Messaggi } from './schermate/Messaggi'
 import { Sposi } from './schermate/Sposi'
+import { BarraAzioni } from './schermate/BarraAzioni'
+import { Installa } from './Installa'
 import { coda } from './upload/coda'
 
 type Vista = 'muro' | 'messaggi'
@@ -68,24 +70,9 @@ export function App() {
         <Visore elenco={visore.elenco} indice={visore.i} chiudi={() => setVisore(null)} />
       )}
 
-      {!visore && (
-        <nav className="fixed top-0 inset-x-0 sicura-sopra flex justify-center gap-1 pointer-events-none">
-          <div className="pointer-events-auto bg-carta/85 backdrop-blur border border-salvia-velo
-                          rounded-full p-1 flex gap-1 mt-1">
-            {(['muro', 'messaggi'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setVista(v)}
-                className={`px-4 py-1.5 rounded-full text-xs transition-colors ${
-                  vista === v ? 'bg-salvia text-crema' : 'text-fumo'
-                }`}
-              >
-                {v === 'muro' ? 'Ricordi' : 'Messaggi'}
-              </button>
-            ))}
-          </div>
-        </nav>
-      )}
+      {!visore && <BarraAzioni vista={vista} cambia={setVista} />}
+      <Installa attivo={!visore} />
+
     </>
   )
 }

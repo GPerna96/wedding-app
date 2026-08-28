@@ -9,6 +9,23 @@ export function Visore({ elenco, indice, chiudi }: {
   const [i, setI] = useState(indice)
   const m = elenco[i]
 
+  // Congela la pagina sotto: senza questo il muro slitta mentre si fa swipe
+  // tra le foto. Su iOS non basta overflow:hidden, serve fissare il body e
+  // rimetterlo dov'era alla chiusura.
+  useEffect(() => {
+    const y = window.scrollY
+    const b = document.body.style
+    const precedenti = { position: b.position, top: b.top, width: b.width, overflow: b.overflow }
+    b.position = 'fixed'
+    b.top = `-${y}px`
+    b.width = '100%'
+    b.overflow = 'hidden'
+    return () => {
+      Object.assign(b, precedenti)
+      window.scrollTo(0, y)
+    }
+  }, [])
+
   useEffect(() => {
     const tasto = (e: KeyboardEvent) => {
       if (e.key === 'Escape') chiudi()

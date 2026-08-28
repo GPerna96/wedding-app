@@ -33,7 +33,7 @@ export function Messaggi() {
 
   return (
     <div className="min-h-dvh pb-28">
-      <header className="sicura-sopra px-5 pb-5 text-center mt-11">
+      <header className="sicura-sopra px-5 pb-5 text-center">
         <h1 className="titolo text-2xl">Due parole per loro</h1>
         <p className="text-fumo text-xs mt-1">Rita e Francesco le leggeranno tutte</p>
       </header>
