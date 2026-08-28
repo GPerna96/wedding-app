@@ -1,10 +1,19 @@
 import { Hono } from 'hono'
-import { richiedeAdmin } from '../sessione'
+import { apriSessioneAdmin, richiedeAdmin } from '../sessione'
 import type { Env } from '../tipi'
 
 export const admin = new Hono<{ Bindings: Env }>()
 
-admin.use('/api/sposi/*', richiedeAdmin)
+/** Unica rotta aperta: scambia la chiave (nel corpo) con il cookie. */
+admin.post('/api/sposi/entra', async (c) => {
+  const { chiave } = await c.req.json<{ chiave: string }>()
+  if (!(await apriSessioneAdmin(c, chiave))) return c.json({ errore: 'non_autorizzato' }, 401)
+  return c.json({ ok: true })
+})
+
+admin.use('/api/sposi/tutto', richiedeAdmin)
+admin.use('/api/sposi/nascondi', richiedeAdmin)
+admin.use('/api/sposi/elenco', richiedeAdmin)
 
 /** Come il muro, ma vede anche il nascosto e gli upload incompleti. */
 admin.get('/api/sposi/tutto', async (c) => {

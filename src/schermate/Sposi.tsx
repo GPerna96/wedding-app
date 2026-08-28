@@ -13,18 +13,32 @@ export function Sposi() {
   } | null>(null)
   const [errore, setErrore] = useState(false)
 
-  const chiave = new URLSearchParams(location.search).get('k') ?? ''
-
   async function ricarica() {
-    const r = await fetch(`/api/sposi/tutto?k=${encodeURIComponent(chiave)}`)
+    const r = await fetch('/api/sposi/tutto')
     if (!r.ok) return setErrore(true)
     setDati(await r.json())
   }
 
-  useEffect(() => { ricarica() }, [])
+  useEffect(() => {
+    (async () => {
+      // La chiave arriva dall'URL una volta sola: la si scambia subito con un
+      // cookie e la si cancella dalla barra degli indirizzi, cosi' non resta
+      // nella cronologia ne' finisce in un log.
+      const chiave = new URLSearchParams(location.search).get('k')
+      if (chiave) {
+        await fetch('/api/sposi/entra', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chiave }),
+        })
+        history.replaceState(null, '', location.pathname)
+      }
+      ricarica()
+    })()
+  }, [])
 
   async function nascondi(tipo: 'media' | 'messaggi', id: string, nascosto: boolean) {
-    await fetch(`/api/sposi/nascondi?k=${encodeURIComponent(chiave)}`, {
+    await fetch('/api/sposi/nascondi', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ tipo, id, nascosto }),
@@ -45,7 +59,7 @@ export function Sposi() {
       </p>
 
       <a
-        href={`/api/sposi/elenco?k=${encodeURIComponent(chiave)}`}
+        href="/api/sposi/elenco"
         className="inline-block bg-salvia text-crema rounded-xl px-5 py-3 text-sm mb-8"
       >
         Scarica l'elenco degli originali

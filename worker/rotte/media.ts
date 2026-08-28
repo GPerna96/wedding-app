@@ -5,6 +5,22 @@ import type { Env, Variabili } from '../tipi'
 export const media = new Hono<{ Bindings: Env; Variables: Variabili }>()
 
 const TIPI = new Set(['foto', 'video'])
+
+/**
+ * Tipi che accettiamo di rimandare indietro cosi' come sono. Tutto il resto
+ * esce come octet-stream: senza questa lista un invitato potrebbe caricare un
+ * .html e farselo servire dal nostro stesso dominio.
+ */
+const MIME_AMMESSI = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif', 'image/avif',
+  'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v',
+])
+
+function mimeSicuro(dichiarato: string | undefined) {
+  const pulito = (dichiarato ?? '').split(';')[0].trim().toLowerCase()
+  return MIME_AMMESSI.has(pulito) ? pulito : 'application/octet-stream'
+}
 const MAX_BYTE = 5 * 1024 * 1024 * 1024 // 5 GB: oltre non ci va nemmeno un 4K lunghissimo
 
 /** Ripulisce il nome file: niente percorsi, niente caratteri che rompono le chiavi R2. */
@@ -24,7 +40,7 @@ media.use('/api/upload/*', richiedeOspite)
  */
 media.post('/api/upload/inizia', async (c) => {
   const b = await c.req.json<{
-    tipo: string; nomeFile?: string; byte: number
+    tipo: string; nomeFile?: string; mime?: string; byte: number
     larghezza?: number; altezza?: number; durataMs?: number
   }>()
 
@@ -40,7 +56,11 @@ media.post('/api/upload/inizia', async (c) => {
   const multipart = b.byte > 10 * 1024 * 1024
   let uploadId: string | null = null
   if (multipart) {
-    const mp = await c.env.MEDIA.createMultipartUpload(chiaveOriginale)
+    // Il tipo va fissato all'apertura: dopo il complete non si tocca piu',
+    // e senza di esso il video uscirebbe come octet-stream e non partirebbe.
+    const mp = await c.env.MEDIA.createMultipartUpload(chiaveOriginale, {
+      httpMetadata: { contentType: mimeSicuro(b.mime) },
+    })
     uploadId = mp.uploadId
   }
 
@@ -87,7 +107,7 @@ media.put('/api/upload/diretto/:id', async (c) => {
   if (!m) return c.json({ errore: 'non_trovato' }, 404)
 
   await c.env.MEDIA.put(m.chiave_originale, c.req.raw.body, {
-    httpMetadata: { contentType: c.req.header('x-tipo-file') || 'application/octet-stream' },
+    httpMetadata: { contentType: mimeSicuro(c.req.header('x-tipo-file')) },
   })
   await c.env.DB.prepare("update media set stato = 'completo' where id = ?").bind(m.id).run()
   return c.json({ ok: true })
@@ -154,6 +174,12 @@ media.get('/media/:genere/:id', async (c) => {
 
   const h = new Headers()
   oggetto.writeHttpMetadata(h)
+  // Doppia cintura: tipo passato al setaccio anche in uscita, e niente sniffing.
+  h.set('content-type', genere === 'anteprima'
+    ? 'image/webp'
+    : mimeSicuro(h.get('content-type') ?? undefined))
+  h.set('x-content-type-options', 'nosniff')
+  h.set('content-security-policy', "default-src 'none'; sandbox")
   h.set('etag', oggetto.httpEtag)
   h.set('cache-control', 'public, max-age=31536000, immutable')
   h.set('accept-ranges', 'bytes')

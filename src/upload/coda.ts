@@ -114,6 +114,7 @@ export class Coda {
         body: JSON.stringify({
           tipo: l.tipo,
           nomeFile: l.file.name,
+          mime: l.file.type,
           byte: l.file.size,
           larghezza: ant.larghezza,
           altezza: ant.altezza,

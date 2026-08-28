@@ -78,16 +78,21 @@ export const richiedeOspite = createMiddleware<{ Bindings: Env; Variables: Varia
   },
 )
 
-/** Il pannello sposi: stessa firma, segreto diverso. */
-export const richiedeAdmin = createMiddleware<{ Bindings: Env }>(async (c, next) => {
-  const chiaveUrl = c.req.query('k')
-  const daCookie = await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)
+/**
+ * Scambia la chiave con un cookie. La chiave arriva nel corpo, mai in query:
+ * gli URL finiscono nei log di observability, i corpi no.
+ */
+export async function apriSessioneAdmin(c: any, chiave: string) {
+  if (!ugualiSempre(chiave ?? '', c.env.SEGRETO_ADMIN)) return false
+  setCookie(c, 'sposi', await firma('ok', c.env.SEGRETO_ADMIN), {
+    httpOnly: true, secure: suHttps(c), sameSite: 'Lax', path: '/', maxAge: UN_ANNO,
+  })
+  return true
+}
 
-  if (daCookie !== 'ok') {
-    if (chiaveUrl !== c.env.SEGRETO_ADMIN) return c.json({ errore: 'non_autorizzato' }, 401)
-    setCookie(c, 'sposi', await firma('ok', c.env.SEGRETO_ADMIN), {
-      httpOnly: true, secure: suHttps(c), sameSite: 'Lax', path: '/', maxAge: UN_ANNO,
-    })
-  }
+/** Il pannello sposi: solo cookie firmato, nessuna scorciatoia via URL. */
+export const richiedeAdmin = createMiddleware<{ Bindings: Env }>(async (c, next) => {
+  const daCookie = await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)
+  if (daCookie !== 'ok') return c.json({ errore: 'non_autorizzato' }, 401)
   await next()
 })
