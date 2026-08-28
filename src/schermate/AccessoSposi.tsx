@@ -34,9 +34,9 @@ export function AccessoSposi() {
         setInvio(false)
         return
       }
-      // Il cookie e' stato impostato: il pannello si apre senza portarsi
-      // dietro il codice nell'indirizzo.
-      location.href = '/sposi'
+      // Il cookie e' stato impostato: si ricarica l'app, che da qui in avanti
+      // mostra gli stessi contenuti di tutti piu' i comandi degli sposi.
+      location.href = '/'
     } catch {
       setErrore(true)
       setInvio(false)

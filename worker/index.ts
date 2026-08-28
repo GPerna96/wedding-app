@@ -89,21 +89,27 @@ app.post('/api/riprendi', async (c) => {
 
 /** Chi sono? Decide se mostrare il benvenuto o entrare dritti nel muro. */
 app.get('/api/io', async (c) => {
+  // Gli sposi sono invitati come tutti: caricano, guardano e scrivono. Il
+  // cookie in piu' aggiunge soltanto i poteri, non una pagina separata.
+  const admin = (await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)) === 'ok'
   const id = await verifica(getCookie(c, 'ospite'), c.env.SEGRETO_COOKIE)
-  if (!id) return c.json({ dentro: false, sposi: c.env.SPOSI })
+  if (!id) return c.json({ dentro: false, sposi: c.env.SPOSI, admin })
 
   const riga = await c.env.DB.prepare('select nome from ospiti where id = ?')
     .bind(id).first<{ nome: string }>()
-  if (!riga) return c.json({ dentro: false, sposi: c.env.SPOSI })
+  if (!riga) return c.json({ dentro: false, sposi: c.env.SPOSI, admin })
 
-  return c.json({ dentro: true, nome: riga.nome, sposi: c.env.SPOSI })
+  return c.json({ dentro: true, nome: riga.nome, sposi: c.env.SPOSI, admin })
 })
 
 /** L'ingresso dal QR: token dell'evento piu' il nome, e il cookie dura un anno. */
 app.post('/api/entra', async (c) => {
   const { token, nome } = await c.req.json<{ token: string; nome: string }>()
 
-  if (token !== c.env.TOKEN_EVENTO) return c.json({ errore: 'token_non_valido' }, 401)
+  // Il QR, oppure la chiave degli sposi: chi ce l'ha e' gia' autorizzato e non
+  // deve andare a cercare un segnaposto per scrivere il proprio nome.
+  const admin = (await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)) === 'ok'
+  if (!admin && token !== c.env.TOKEN_EVENTO) return c.json({ errore: 'token_non_valido' }, 401)
 
   const pulito = (nome ?? '').trim().replace(/\s+/g, ' ').slice(0, 60)
   if (pulito.length < 2) return c.json({ errore: 'nome_troppo_corto' }, 400)

@@ -1,5 +1,6 @@
 export type MediaRiga = {
   id: string
+  nascosto?: number
   tipo: 'foto' | 'video'
   larghezza: number | null
   altezza: number | null
@@ -23,7 +24,7 @@ async function leggi<T>(url: string): Promise<T> {
 }
 
 export const api = {
-  io: () => leggi<{ dentro: boolean; nome?: string; sposi: string }>('/api/io'),
+  io: () => leggi<{ dentro: boolean; nome?: string; sposi: string; admin: boolean }>('/api/io'),
 
   entra: async (token: string, nome: string) => {
     const r = await fetch('/api/entra', {
@@ -39,6 +40,15 @@ export const api = {
   },
 
   media: (dopo = 0) => leggi<{ media: MediaRiga[] }>(`/api/media?dopo=${dopo}`),
+
+  nascondi: (tipo: 'media' | 'messaggi', id: string, nascosto: boolean) =>
+    fetch('/api/sposi/nascondi', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tipo, id, nascosto }),
+    }).then((r) => {
+      if (!r.ok) throw new Error(String(r.status))
+    }),
 
   messaggi: () => leggi<{ messaggi: MessaggioRiga[] }>('/api/messaggi'),
 

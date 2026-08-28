@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
-import { richiedeOspite, richiedeSessione } from '../sessione'
+import { getCookie } from 'hono/cookie'
+import { richiedeOspite, richiedeSessione, verifica } from '../sessione'
 import type { Env, Variabili } from '../tipi'
 
 export const media = new Hono<{ Bindings: Env; Variables: Variabili }>()
@@ -145,13 +146,18 @@ media.post('/api/upload/completa/:id', async (c) => {
 /** Il muro. `dopo` permette al polling di chiedere solo le novita'. */
 media.get('/api/media', async (c) => {
   const dopo = Number(c.req.query('dopo') ?? 0)
+  // Gli sposi vedono anche cio' che hanno nascosto: e' l'unico modo per
+  // rimettere in mostra qualcosa dopo averlo tolto.
+  const admin = (await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)) === 'ok'
+
   const { results } = await c.env.DB.prepare(
-    `select m.id, m.tipo, m.larghezza, m.altezza, m.durata_ms, m.stato, m.creato_il, o.nome
+    `select m.id, m.tipo, m.larghezza, m.altezza, m.durata_ms, m.stato, m.nascosto,
+            m.creato_il, o.nome
        from media m join ospiti o on o.id = m.ospite_id
-      where m.nascosto = 0 and m.creato_il > ?
+      where (m.nascosto = 0 or ?) and m.creato_il > ?
       order by m.creato_il desc
       limit 300`,
-  ).bind(dopo).all()
+  ).bind(admin ? 1 : 0, dopo).all()
   return c.json({ media: results })
 })
 
@@ -165,7 +171,11 @@ media.get('/media/:genere/:id', async (c) => {
   ).bind(c.req.param('id')).first<{
     chiave_originale: string; chiave_anteprima: string; nascosto: number
   }>()
-  if (!riga || riga.nascosto) return c.notFound()
+  if (!riga) return c.notFound()
+  if (riga.nascosto) {
+    const admin = (await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)) === 'ok'
+    if (!admin) return c.notFound()
+  }
 
   const chiave = genere === 'anteprima' ? riga.chiave_anteprima : riga.chiave_originale
   const range = c.req.header('range')

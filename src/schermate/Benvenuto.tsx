@@ -5,9 +5,10 @@ import { LettoreQr } from './LettoreQr'
 import { Foglie } from './Foglie'
 import { AccessoSposi } from './AccessoSposi'
 
-export function Benvenuto({ sposi, token, entrato }: {
+export function Benvenuto({ sposi, token, admin, entrato }: {
   sposi: string
   token: string | null
+  admin: boolean
   entrato: (nome: string) => void
 }) {
   const [nome, setNome] = useState('')
@@ -17,7 +18,8 @@ export function Benvenuto({ sposi, token, entrato }: {
   // Il token puo' arrivare dal QR aperto con la fotocamera di sistema oppure
   // essere letto qui dentro: da questo punto in poi non fa differenza.
   const [letto, setLetto] = useState<string | null>(null)
-  const codice = token ?? letto
+  // Con la chiave degli sposi in tasca il QR non serve: basta il nome.
+  const codice = token ?? letto ?? (admin ? 'sposi' : null)
 
   const [primo, secondo] = sposi.split('&').map((s) => s.trim())
 

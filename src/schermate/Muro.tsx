@@ -6,11 +6,12 @@ import { AccessoSposi } from './AccessoSposi'
 
 const INTERVALLO = 8000
 
-export function Muro({ apri, nome, sposi, inPausa }: {
+export function Muro({ apri, nome, sposi, inPausa, admin }: {
   apri: (indice: number, elenco: MediaRiga[]) => void
   nome?: string
   sposi: string
   inPausa: boolean
+  admin: boolean
 }) {
   const [elenco, setElenco] = useState<MediaRiga[]>([])
   const [lavori, setLavori] = useState<Lavoro[]>([])
@@ -70,8 +71,31 @@ export function Muro({ apri, nome, sposi, inPausa }: {
 
   const inCorso = lavori.filter((l) => l.stato !== 'fatto')
 
+  async function cambiaVisibilita(m: MediaRiga) {
+    const prossimo = m.nascosto ? 0 : 1
+    // Cambia subito sotto il dito, poi si allinea al server.
+    setElenco((e) => e.map((x) => (x.id === m.id ? { ...x, nascosto: prossimo } : x)))
+    try {
+      await api.nascondi('media', m.id, !m.nascosto)
+    } catch {
+      setElenco((e) => e.map((x) => (x.id === m.id ? { ...x, nascosto: m.nascosto } : x)))
+    }
+  }
+
   return (
     <div className="min-h-dvh pb-24">
+      {admin && (
+        <div className="bg-salvia text-crema px-4 py-3 flex items-center justify-between gap-3">
+          <span className="text-[13px]">{t.modoSposi}</span>
+          <a
+            href="/api/sposi/archivio"
+            className="bg-crema/15 border border-crema/25 rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap"
+          >
+            {t.scaricaTutto}
+          </a>
+        </div>
+      )}
+
       <header className="sicura-sopra px-5 pb-4 text-center">
         {nome && (
           <p className="text-salvia text-sm mb-1">{t.ciao(nome.split(' ')[0])}</p>
@@ -125,8 +149,9 @@ export function Muro({ apri, nome, sposi, inPausa }: {
             <button
               key={m.id}
               onClick={() => apri(i, elenco)}
-              className="block w-full break-inside-avoid relative rounded-2xl overflow-hidden
-                         bg-salvia-velo active:scale-[0.98] transition-transform"
+              className={`block w-full break-inside-avoid relative rounded-2xl overflow-hidden
+                         bg-salvia-velo active:scale-[0.98] transition-transform
+                         ${m.nascosto ? 'opacity-45 ring-2 ring-red-800/40' : ''}`}
               style={{
                 aspectRatio: m.larghezza && m.altezza ? `${m.larghezza}/${m.altezza}` : '1',
               }}
@@ -141,6 +166,18 @@ export function Muro({ apri, nome, sposi, inPausa }: {
                 <span className="absolute top-2 right-2 bg-black/45 backdrop-blur-sm rounded-full
                                  w-7 h-7 grid place-items-center text-white text-[10px]">
                   ▶
+                </span>
+              )}
+              {admin && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); cambiaVisibilita(m) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); cambiaVisibilita(m) } }}
+                  className="absolute top-2 left-2 bg-black/55 backdrop-blur-sm rounded-full
+                             px-2.5 py-1 text-white text-[11px]"
+                >
+                  {m.nascosto ? t.mostra : t.nascondi}
                 </span>
               )}
               <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent

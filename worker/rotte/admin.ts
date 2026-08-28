@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { apriSessioneAdmin, richiedeAdmin } from '../sessione'
+import { creaZip, type Voce } from '../zip'
 import type { Env } from '../tipi'
 
 export const admin = new Hono<{ Bindings: Env }>()
@@ -16,6 +17,7 @@ admin.use('/api/sposi/nascondi', richiedeAdmin)
 admin.use('/api/sposi/elenco', richiedeAdmin)
 admin.use('/api/sposi/deposito', richiedeAdmin)
 admin.use('/api/sposi/pulisci-orfani', richiedeAdmin)
+admin.use('/api/sposi/archivio', richiedeAdmin)
 
 /** Come il muro, ma vede anche il nascosto e gli upload incompleti. */
 admin.get('/api/sposi/tutto', async (c) => {
@@ -131,6 +133,47 @@ admin.post('/api/sposi/pulisci-orfani', async (c) => {
     await c.env.MEDIA.delete(orfani.slice(i, i + 100))
   }
   return c.json({ rimossi: orfani.length })
+})
+
+/**
+ * Tutti gli originali in un archivio unico, costruito mentre viene scaricato.
+ *
+ * I nomi dentro l'archivio portano data e autore, cosi' una volta scompattati
+ * si capisce chi ha ripreso cosa senza dover riaprire l'app.
+ */
+admin.get('/api/sposi/archivio', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `select m.chiave_originale, m.nome_file, m.creato_il, o.nome
+       from media m join ospiti o on o.id = m.ospite_id
+      where m.stato = 'completo'
+      order by m.creato_il`,
+  ).all<{ chiave_originale: string; nome_file: string; creato_il: number; nome: string }>()
+
+  if (!results.length) return c.json({ errore: 'niente_da_scaricare' }, 404)
+
+  const usati = new Set<string>()
+  const voci: Voce[] = results.map((r, i) => {
+    const d = new Date(r.creato_il)
+    const quando = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}` +
+      `-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`
+    const chi = r.nome.replace(/[^\p{L}\p{N} ]/gu, '').trim().replace(/\s+/g, '-') || 'ospite'
+    let nome = `${quando}_${chi}_${r.nome_file || 'file'}`
+    // Due scatti nello stesso minuto dalla stessa persona: il numero evita
+    // che uno sovrascriva l'altro allo scompattamento.
+    while (usati.has(nome.toLowerCase())) nome = `${quando}_${chi}_${i}_${r.nome_file || 'file'}`
+    usati.add(nome.toLowerCase())
+    return { nome, chiave: r.chiave_originale, quando: r.creato_il }
+  })
+
+  const oggi = new Date().toISOString().slice(0, 10)
+  return new Response(creaZip(c.env.MEDIA, voci), {
+    headers: {
+      'content-type': 'application/zip',
+      'content-disposition': `attachment; filename="matrimonio-${oggi}.zip"`,
+      // La misura finale non si conosce in anticipo: si manda a flusso.
+      'cache-control': 'no-store',
+    },
+  })
 })
 
 /** Elenco delle chiavi R2 degli originali, per il recupero finale con rclone. */

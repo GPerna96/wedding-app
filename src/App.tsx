@@ -4,7 +4,6 @@ import { Benvenuto } from './schermate/Benvenuto'
 import { Muro } from './schermate/Muro'
 import { Visore } from './schermate/Visore'
 import { Messaggi } from './schermate/Messaggi'
-import { Sposi } from './schermate/Sposi'
 import { BarraAzioni } from './schermate/BarraAzioni'
 import { Installa } from './Installa'
 import { coda } from './upload/coda'
@@ -12,7 +11,7 @@ import { coda } from './upload/coda'
 type Vista = 'muro' | 'messaggi'
 
 export function App() {
-  const [io, setIo] = useState<{ dentro: boolean; nome?: string; sposi: string } | null>(null)
+  const [io, setIo] = useState<{ dentro: boolean; nome?: string; sposi: string; admin: boolean } | null>(null)
   const [vista, setVista] = useState<Vista>('muro')
   const [visore, setVisore] = useState<{ i: number; elenco: MediaRiga[] } | null>(null)
 
@@ -53,7 +52,7 @@ export function App() {
       try {
         setIo(await api.io())
       } catch {
-        setIo({ dentro: false, sposi: 'Rita & Francesco' })
+        setIo({ dentro: false, sposi: 'Rita & Francesco', admin: false })
       }
     })()
   }, [])
@@ -65,8 +64,6 @@ export function App() {
     return () => window.removeEventListener('beforeunload', guardia)
   }, [])
 
-  if (location.pathname === '/sposi') return <Sposi />
-
   if (!io) return <div className="min-h-dvh grid place-items-center text-fumo">…</div>
 
   if (!io.dentro) {
@@ -74,9 +71,10 @@ export function App() {
       <Benvenuto
         sposi={io.sposi}
         token={token}
+        admin={io.admin}
         entrato={(nome) => {
           try { sessionStorage.removeItem('token') } catch { /* niente */ }
-          setIo({ dentro: true, nome, sposi: io.sposi })
+          setIo({ ...io, dentro: true, nome })
         }}
       />
     )
@@ -93,6 +91,7 @@ export function App() {
             // Col visore aperto il muro non ha nessuno che lo guardi: inutile
             // continuare a interrogare il server.
             inPausa={!!visore}
+            admin={io.admin}
           />
         )
         : <Messaggi nome={io.nome} />}
