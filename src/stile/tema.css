@@ -59,17 +59,6 @@
   .sicura-sotto { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   .sicura-sopra { padding-top: max(1rem, env(safe-area-inset-top)); }
 
-  /* Spazio sotto il contenuto delle schermate con la barra fissa.
-     --barra la misura la barra stessa quando compare: ogni browser riserva lo
-     spazio a modo suo e qualsiasi valore fisso sbaglia da qualche parte. Il
-     ripiego serve solo per l'istante prima della misura. */
-  .spazio-barra {
-    padding-bottom: calc(
-      var(--barra, calc(5rem + env(safe-area-inset-bottom)))
-      + var(--sotto, 0px)
-      + 1.5rem
-    );
-  }
 }
 
 @keyframes comparsa {

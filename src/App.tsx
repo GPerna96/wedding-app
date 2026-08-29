@@ -64,7 +64,7 @@ export function App() {
     return () => window.removeEventListener('beforeunload', guardia)
   }, [])
 
-  if (!io) return <div className="min-h-svh grid place-items-center text-fumo">…</div>
+  if (!io) return <div className="h-svh grid place-items-center text-fumo">…</div>
 
   if (!io.dentro) {
     return (
@@ -80,8 +80,19 @@ export function App() {
     )
   }
 
+  /*
+   * La pagina non scorre: scorre solo l'area centrale.
+   *
+   * Finche' era il documento a scorrere, la barra doveva restare incollata al
+   * fondo con position:fixed -- e ogni browser decide a modo suo dove sia il
+   * fondo. Safari lo mette sopra la propria barra, Chrome su iPhone no, e
+   * inseguirli uno per uno non finiva mai. Cosi' invece la barra e' un
+   * fratello dell'area scorrevole: non galleggia su nulla e non c'e' nulla
+   * sotto cui possa finire.
+   */
   return (
-    <>
+    <div className="h-svh flex flex-col overflow-hidden">
+      <main data-scorrevole className="flex-1 overflow-y-auto overscroll-contain">
       {vista === 'muro'
         ? (
           <Muro
@@ -95,6 +106,7 @@ export function App() {
           />
         )
         : <Messaggi nome={io.nome} />}
+      </main>
 
       {visore && (
         <Visore elenco={visore.elenco} indice={visore.i} chiudi={() => setVisore(null)} />
@@ -102,7 +114,6 @@ export function App() {
 
       {!visore && <BarraAzioni vista={vista} cambia={setVista} />}
       <Installa attivo={!visore} />
-
-    </>
+    </div>
   )
 }

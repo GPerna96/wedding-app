@@ -12,73 +12,10 @@ type Vista = 'muro' | 'messaggi'
  * al titolo.
  */
 export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista) => void }) {
-  const barra = useRef<HTMLElement>(null)
-
-  /**
-   * L'altezza vera della barra, misurata, non stimata.
-   *
-   * Ogni browser riserva lo spazio a modo suo: Safari su iPhone dichiara la
-   * zona sicura dell'home indicator, Chrome su iPhone ha una propria barra in
-   * fondo e conta diversamente. Qualunque valore fisso sbaglia da qualche
-   * parte, e il fondo del muro finisce sotto la barra. Misurarlo e passarlo al
-   * CSS toglie di mezzo il problema per tutti.
-   */
-  useEffect(() => {
-    const e = barra.current
-    if (!e) return
-
-    const misura = () => {
-      const radice = document.documentElement
-      radice.style.setProperty('--barra', `${e.offsetHeight}px`)
-
-      /**
-       * Se la barra sborda sotto lo schermo, la si risale di quel tanto.
-       *
-       * Serve perche' i browser ancorano gli elementi fissi in modo diverso:
-       * Safari li tiene sopra la propria barra, Chrome su iPhone li lascia
-       * finire sotto quella con le frecce e le schede. Invece di indovinare
-       * chi stiamo servendo, guardiamo dove la barra e' finita davvero e
-       * correggiamo solo se serve: dove gia' funziona non cambia nulla.
-       */
-      const vv = window.visualViewport
-      if (!vv) return
-
-      const attuale = parseFloat(radice.style.getPropertyValue('--sotto')) || 0
-      const fondoVisibile = vv.height + vv.offsetTop
-      const sborda = e.getBoundingClientRect().bottom - fondoVisibile
-
-      // Oltre i 150 non e' una barra ma la tastiera, che ha gia' il suo
-      // trattamento: li' la nostra si ritira del tutto e non va spostata.
-      if (Math.abs(sborda) > 2 && Math.abs(sborda) < 150) {
-        const nuovo = Math.max(0, Math.min(150, attuale + sborda))
-        radice.style.setProperty('--sotto', `${Math.round(nuovo)}px`)
-      }
-    }
-    misura()
-
-    const osservatore = new ResizeObserver(misura)
-    osservatore.observe(e)
-    // La barra del browser che va e viene cambia la viewport senza toccare la
-    // barra: anche li' la misura va rifatta.
-    window.visualViewport?.addEventListener('resize', misura)
-    // Su Chrome la barra si ritrae e riappare scorrendo: la copertura cambia
-    // senza che nulla venga ridimensionato.
-    window.visualViewport?.addEventListener('scroll', misura)
-    window.addEventListener('scroll', misura, { passive: true })
-    window.addEventListener('orientationchange', misura)
-
-    return () => {
-      osservatore.disconnect()
-      window.visualViewport?.removeEventListener('resize', misura)
-      window.visualViewport?.removeEventListener('scroll', misura)
-      window.removeEventListener('scroll', misura)
-      window.removeEventListener('orientationchange', misura)
-    }
-  }, [])
-
   const [menu, setMenu] = useState(false)
   const scatta = useRef<HTMLInputElement>(null)
   const galleria = useRef<HTMLInputElement>(null)
+  const barra = useRef<HTMLElement>(null)
 
   useBloccoScorrimento(menu)
   // Con la tastiera aperta la barra finirebbe sepolta sotto: meglio toglierla.
@@ -149,10 +86,10 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
 
       <nav
         ref={barra}
-        style={{ bottom: 'var(--sotto, 0px)' }}
-        className={`fixed inset-x-0 z-30 bg-carta/95 backdrop-blur border-t
-                    border-salvia-velo transition-transform duration-200
-                    ${tastiera ? 'translate-y-full' : ''}`}
+        // shrink-0: non deve cedere spazio quando il contenuto e' lungo.
+        className={`shrink-0 z-30 bg-carta border-t border-salvia-velo
+                    transition-[height,opacity] duration-200 overflow-hidden
+                    ${tastiera ? 'h-0 opacity-0' : ''}`}
       >
         <div className="flex items-center justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Scheda

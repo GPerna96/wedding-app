@@ -33,7 +33,7 @@ export function Messaggi({ nome }: { nome?: string }) {
   }
 
   return (
-    <div className="min-h-svh spazio-barra">
+    <div className="min-h-full pb-4">
       <header className="sicura-sopra px-5 pb-5 text-center">
         {nome && <p className="text-salvia text-sm mb-1">{t.ciao(nome.split(' ')[0])}</p>}
         <h1 className="titolo text-[28px]">{t.dueParole}</h1>

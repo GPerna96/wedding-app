@@ -116,7 +116,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
 
   return (
     <Tirare aggiorna={() => ricaricaTutto.current()}>
-    <div className="min-h-svh spazio-barra flex flex-col">
+    <div className="min-h-full flex flex-col pb-4">
       {admin && (
         <div className="bg-salvia text-crema px-4 py-3 flex items-center justify-between gap-3">
           <span className="text-[13px]">{t.modoSposi}</span>

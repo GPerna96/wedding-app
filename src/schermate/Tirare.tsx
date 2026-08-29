@@ -20,9 +20,14 @@ export function Tirare({ aggiorna, children }: {
   const partenza = useRef<number | null>(null)
 
   useEffect(() => {
+    // A scorrere e' l'area centrale, non la pagina: e' li' che va ascoltato
+    // il gesto, ed e' la sua posizione a dire se siamo in cima.
+    const area = document.querySelector<HTMLElement>('[data-scorrevole]')
+    if (!area) return
+
     function inizio(e: TouchEvent) {
       // Solo se siamo gia' in cima: altrimenti si sta semplicemente scorrendo.
-      partenza.current = window.scrollY <= 0 ? e.touches[0].clientY : null
+      partenza.current = area!.scrollTop <= 0 ? e.touches[0].clientY : null
     }
 
     function muove(e: TouchEvent) {
@@ -61,16 +66,16 @@ export function Tirare({ aggiorna, children }: {
     document.addEventListener('visibilitychange', rimetti)
 
     // passive: false, altrimenti il browser non lascia bloccare lo scorrimento.
-    window.addEventListener('touchstart', inizio, { passive: true })
-    window.addEventListener('touchmove', muove, { passive: false })
-    window.addEventListener('touchend', fine)
-    window.addEventListener('touchcancel', fine)
+    area.addEventListener('touchstart', inizio, { passive: true })
+    area.addEventListener('touchmove', muove, { passive: false })
+    area.addEventListener('touchend', fine)
+    area.addEventListener('touchcancel', fine)
     return () => {
       document.removeEventListener('visibilitychange', rimetti)
-      window.removeEventListener('touchstart', inizio)
-      window.removeEventListener('touchmove', muove)
-      window.removeEventListener('touchend', fine)
-      window.removeEventListener('touchcancel', fine)
+      area.removeEventListener('touchstart', inizio)
+      area.removeEventListener('touchmove', muove)
+      area.removeEventListener('touchend', fine)
+      area.removeEventListener('touchcancel', fine)
     }
   }, [tiro, inCorso, aggiorna])
 
@@ -79,7 +84,7 @@ export function Tirare({ aggiorna, children }: {
   return (
     <>
       <div
-        className="fixed inset-x-0 top-0 z-20 flex justify-center pointer-events-none"
+        className="absolute inset-x-0 top-0 z-20 flex justify-center pointer-events-none"
         style={{ height: tiro, opacity: Math.min(1, tiro / 45) }}
       >
         <span

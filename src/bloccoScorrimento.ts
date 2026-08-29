@@ -10,19 +10,15 @@ import { useEffect, useState } from 'react'
 export function useBloccoScorrimento(attivo: boolean) {
   useEffect(() => {
     if (!attivo) return
-    const y = window.scrollY
-    const b = document.body.style
-    const prima = { position: b.position, top: b.top, width: b.width, overflow: b.overflow }
 
-    b.position = 'fixed'
-    b.top = `-${y}px`
-    b.width = '100%'
-    b.overflow = 'hidden'
+    // A scorrere e' l'area centrale, non il documento: basta fermare quella,
+    // e la posizione si conserva da sola perche' nessuno la sposta.
+    const area = document.querySelector<HTMLElement>('[data-scorrevole]')
+    if (!area) return
 
-    return () => {
-      Object.assign(b, prima)
-      window.scrollTo(0, y)
-    }
+    const prima = area.style.overflowY
+    area.style.overflowY = 'hidden'
+    return () => { area.style.overflowY = prima }
   }, [attivo])
 }
 
