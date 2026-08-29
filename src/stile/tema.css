@@ -64,7 +64,11 @@
      spazio a modo suo e qualsiasi valore fisso sbaglia da qualche parte. Il
      ripiego serve solo per l'istante prima della misura. */
   .spazio-barra {
-    padding-bottom: calc(var(--barra, calc(5rem + env(safe-area-inset-bottom))) + 1.5rem);
+    padding-bottom: calc(
+      var(--barra, calc(5rem + env(safe-area-inset-bottom)))
+      + var(--sotto, 0px)
+      + 1.5rem
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { IconaInstalla } from './schermate/Icone'
 import { t } from './lingua'
 import { useBloccoScorrimento } from './bloccoScorrimento'
+import { riconosciBrowser, nomeBrowser, type Browser } from './browser'
 
 type EventoInstallazione = Event & { prompt: () => Promise<void> }
 
@@ -14,16 +15,27 @@ function giaInstallata() {
   )
 }
 
-function suIos() {
-  const ua = navigator.userAgent
-  // Gli iPad recenti si dichiarano Mac: si riconoscono dal fatto che hanno
-  // uno schermo tattile, cosa che nessun Mac ha.
-  return /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
-}
-
 /** Su un telefono l'aggiunta si può sempre fare a mano, anche senza evento. */
 function suTelefono() {
-  return suIos() || /android/i.test(navigator.userAgent)
+  const b = riconosciBrowser()
+  return b !== 'altro'
+}
+
+/** Le due mosse da fare, dette con i nomi che quel browser usa davvero. */
+function istruzioniPer(b: Browser): { gesto: string; voce: string } {
+  switch (b) {
+    case 'safari-ios': return { gesto: t.gestoSafari, voce: t.voceHome }
+    case 'chrome-ios': return { gesto: t.gestoChromeIos, voce: t.voceHome }
+    case 'edge-ios': return { gesto: t.gestoChromeIos, voce: t.voceHome }
+    case 'firefox-ios': return { gesto: t.gestoFirefoxIos, voce: t.voceHome }
+    case 'samsung': return { gesto: t.gestoSamsung, voce: t.voceSamsung }
+    case 'chrome-android':
+    case 'edge-android':
+    case 'firefox-android': return { gesto: t.gestoMenuAndroid, voce: t.voceInstalla }
+    // Browser che non conosciamo: meglio un'indicazione vaga che un nome
+    // sbagliato, che manderebbe a cercare un pulsante inesistente.
+    default: return { gesto: t.gestoGenerico, voce: t.voceGenerica }
+  }
 }
 
 /**
@@ -77,7 +89,7 @@ export function Installa({ attivo }: { attivo: boolean }) {
   if (!attivo || !installabile || rimandato) return null
 
   return (
-    <div className="fixed inset-x-3 bottom-[calc(var(--barra,5rem)+0.75rem)] z-20 bg-carta border border-salvia-velo
+    <div className="fixed inset-x-3 bottom-[calc(var(--barra,5rem)+var(--sotto,0px)+0.75rem)] z-20 bg-carta border border-salvia-velo
                     rounded-2xl shadow-lg px-4 py-3.5 flex items-start gap-3 comparsa">
       <span className="text-salvia mt-0.5"><IconaInstalla className="w-6 h-6" /></span>
       <div className="flex-1 min-w-0">
@@ -108,6 +120,9 @@ export function Installa({ attivo }: { attivo: boolean }) {
 export function VoceInstalla() {
   const { evento, installabile } = usaInstallazione()
   const [istruzioni, setIstruzioni] = useState(false)
+  const browser = riconosciBrowser()
+  const passi = istruzioniPer(browser)
+  const nome = nomeBrowser(browser)
 
   useBloccoScorrimento(istruzioni)
 
@@ -136,10 +151,15 @@ export function VoceInstalla() {
           >
             <div className="w-10 h-1 bg-salvia-velo rounded-full mx-auto mb-6 sm:hidden" />
             <p className="titolo text-2xl text-center mb-1">{t.aggiungiAllaHome}</p>
-            <p className="text-fumo text-sm text-center leading-relaxed mb-6">{t.perchéInstallare}</p>
+            <p className="text-fumo text-sm text-center leading-relaxed mb-2">{t.perchéInstallare}</p>
+            {/* Il nome del browser rassicura chi si chiede se sta guardando
+                le istruzioni giuste. */}
+            <p className="text-salvia text-[13px] text-center mb-6">
+              {nome ? t.conBrowser(nome) : ''}
+            </p>
 
             <ol className="space-y-4">
-              <Passo numero={1} testo={suIos() ? t.passoCondividi : t.passoMenu}>
+              <Passo numero={1} testo={passi.gesto}>
                 {/* l'icona di condivisione di iOS: un rettangolo con la freccia che esce */}
                 <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor"
                      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -147,7 +167,7 @@ export function VoceInstalla() {
                   <path d="M7 11H5.5A1.5 1.5 0 0 0 4 12.5v7A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 18.5 11H17" />
                 </svg>
               </Passo>
-              <Passo numero={2} testo={suIos() ? t.passoAggiungi : t.passoInstalla}>
+              <Passo numero={2} testo={passi.voce}>
                 <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor"
                      strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                   <rect x="3.5" y="3.5" width="17" height="17" rx="4" />

@@ -28,7 +28,31 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
     if (!e) return
 
     const misura = () => {
-      document.documentElement.style.setProperty('--barra', `${e.offsetHeight}px`)
+      const radice = document.documentElement
+      radice.style.setProperty('--barra', `${e.offsetHeight}px`)
+
+      /**
+       * Se la barra sborda sotto lo schermo, la si risale di quel tanto.
+       *
+       * Serve perche' i browser ancorano gli elementi fissi in modo diverso:
+       * Safari li tiene sopra la propria barra, Chrome su iPhone li lascia
+       * finire sotto quella con le frecce e le schede. Invece di indovinare
+       * chi stiamo servendo, guardiamo dove la barra e' finita davvero e
+       * correggiamo solo se serve: dove gia' funziona non cambia nulla.
+       */
+      const vv = window.visualViewport
+      if (!vv) return
+
+      const attuale = parseFloat(radice.style.getPropertyValue('--sotto')) || 0
+      const fondoVisibile = vv.height + vv.offsetTop
+      const sborda = e.getBoundingClientRect().bottom - fondoVisibile
+
+      // Oltre i 150 non e' una barra ma la tastiera, che ha gia' il suo
+      // trattamento: li' la nostra si ritira del tutto e non va spostata.
+      if (Math.abs(sborda) > 2 && Math.abs(sborda) < 150) {
+        const nuovo = Math.max(0, Math.min(150, attuale + sborda))
+        radice.style.setProperty('--sotto', `${Math.round(nuovo)}px`)
+      }
     }
     misura()
 
@@ -37,11 +61,17 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
     // La barra del browser che va e viene cambia la viewport senza toccare la
     // barra: anche li' la misura va rifatta.
     window.visualViewport?.addEventListener('resize', misura)
+    // Su Chrome la barra si ritrae e riappare scorrendo: la copertura cambia
+    // senza che nulla venga ridimensionato.
+    window.visualViewport?.addEventListener('scroll', misura)
+    window.addEventListener('scroll', misura, { passive: true })
     window.addEventListener('orientationchange', misura)
 
     return () => {
       osservatore.disconnect()
       window.visualViewport?.removeEventListener('resize', misura)
+      window.visualViewport?.removeEventListener('scroll', misura)
+      window.removeEventListener('scroll', misura)
       window.removeEventListener('orientationchange', misura)
     }
   }, [])
@@ -119,7 +149,8 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
 
       <nav
         ref={barra}
-        className={`fixed inset-x-0 bottom-0 z-30 bg-carta/95 backdrop-blur border-t
+        style={{ bottom: 'var(--sotto, 0px)' }}
+        className={`fixed inset-x-0 z-30 bg-carta/95 backdrop-blur border-t
                     border-salvia-velo transition-transform duration-200
                     ${tastiera ? 'translate-y-full' : ''}`}
       >
@@ -162,12 +193,28 @@ function Scheda({ attiva, onClick, etichetta, Icona }: {
   return (
     <button
       onClick={onClick}
+      aria-current={attiva ? 'page' : undefined}
       // Ben oltre i 44px raccomandati: si prende col pollice senza guardare.
-      className={`min-w-[76px] py-2 px-4 rounded-xl flex flex-col items-center gap-1 transition-colors
-                  ${attiva ? 'text-salvia' : 'text-fumo/60'}`}
+      className="min-w-[84px] py-1.5 px-3 rounded-2xl flex flex-col items-center gap-1
+                 transition-colors"
     >
-      <Icona className="w-6 h-6" />
-      <span className="text-[13px]">{etichetta}</span>
+      {/*
+        La sola differenza di colore non bastava a dire dove ci si trova.
+        L'icona attiva sta dentro una pastiglia piena, come un segnaposto:
+        si vede con la coda dell'occhio, senza doverla cercare.
+      */}
+      <span
+        className={`px-4 py-1 rounded-full transition-colors ${
+          attiva ? 'bg-salvia text-crema' : 'text-fumo/55'
+        }`}
+      >
+        <Icona className="w-6 h-6" />
+      </span>
+      <span className={`text-[13px] transition-colors ${
+        attiva ? 'text-salvia font-medium' : 'text-fumo/55'
+      }`}>
+        {etichetta}
+      </span>
     </button>
   )
 }
