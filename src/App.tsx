@@ -67,16 +67,22 @@ export function App() {
   if (!io) return <div className="h-full grid place-items-center text-fumo">…</div>
 
   if (!io.dentro) {
+    // Anche il benvenuto ha bisogno della sua area scorrevole: il documento e'
+    // inchiodato allo schermo, e su un telefono basso -- o con la tastiera
+    // aperta sul campo del nome -- senza questa il contenuto verrebbe tagliato
+    // senza modo di raggiungerlo.
     return (
-      <Benvenuto
-        sposi={io.sposi}
-        token={token}
-        admin={io.admin}
-        entrato={(nome) => {
-          try { sessionStorage.removeItem('token') } catch { /* niente */ }
-          setIo({ ...io, dentro: true, nome })
-        }}
-      />
+      <div data-scorrevole className="h-full overflow-y-auto overscroll-contain">
+        <Benvenuto
+          sposi={io.sposi}
+          token={token}
+          admin={io.admin}
+          entrato={(nome) => {
+            try { sessionStorage.removeItem('token') } catch { /* niente */ }
+            setIo({ ...io, dentro: true, nome })
+          }}
+        />
+      </div>
     )
   }
 
