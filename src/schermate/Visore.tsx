@@ -77,10 +77,16 @@ export function Visore({ elenco, indice, chiudi }: {
             className="max-w-full max-h-full"
           />
         ) : (
+          /* L'anteprima grande arriva in un attimo e riempie lo schermo mentre
+             l'originale -- che puo' pesare qualche mega -- e' ancora in volo.
+             Il browser sostituisce da solo quando il secondo e' pronto. */
           <img
             key={m.id}
             src={`/media/originale/${m.id}`}
+            srcSet={`/media/anteprima/${m.id} 1600w, /media/originale/${m.id} 4000w`}
+            sizes="100vw"
             alt={m.nome}
+            decoding="async"
             className="max-w-full max-h-full object-contain"
           />
         )}

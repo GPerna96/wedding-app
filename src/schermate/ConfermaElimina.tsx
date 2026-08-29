@@ -43,7 +43,7 @@ export function ConfermaElimina({ media, chiudi, conferma }: {
         <div className="w-10 h-1 bg-salvia-velo rounded-full mx-auto mb-6 sm:hidden" />
 
         <img
-          src={`/media/anteprima/${media.id}`}
+          src={`/media/griglia/${media.id}`}
           alt=""
           className="w-24 h-24 object-cover rounded-2xl mx-auto mb-5 bg-salvia-velo"
         />

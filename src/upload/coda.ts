@@ -145,7 +145,7 @@ export class Coda {
   private async esegui(l: Lavoro) {
     // 1. L'anteprima nasce qui sul telefono: nessuna transcodifica lato server.
     const ant = await creaAnteprima(l.file)
-    this.aggiorna(l.id, { anteprimaLocale: URL.createObjectURL(ant.blob), progresso: 0.05 })
+    this.aggiorna(l.id, { anteprimaLocale: URL.createObjectURL(ant.griglia), progresso: 0.05 })
 
     // 2. Apri la pratica lato server, dicendo di che file si tratta.
     const marchio = await impronta(l.file)
@@ -174,7 +174,14 @@ export class Coda {
     const { id: idServer, multipart } = risposta
     this.aggiorna(l.id, { idServer, stato: 'invio', progresso: 0.1 })
 
-    // 3. Prima l'anteprima: e' leggera, e fa comparire subito la foto nel muro.
+    // 3. Prima la miniatura della griglia: e' minuscola e sblocca la comparsa
+    // nel muro degli altri. La grande, che serve solo aprendo la foto, segue.
+    await conRitentativi(() =>
+      fetch(`/api/upload/anteprima/${idServer}?griglia`, { method: 'PUT', body: ant.griglia })
+        .then(json),
+    )
+    this.aggiorna(l.id, { progresso: 0.12 })
+
     await conRitentativi(() =>
       fetch(`/api/upload/anteprima/${idServer}`, { method: 'PUT', body: ant.blob }).then(json),
     )

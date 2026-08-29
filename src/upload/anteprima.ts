@@ -1,34 +1,55 @@
-const LATO_MAX = 1600
+// Due misure, perche' servono a due cose diverse: la griglia mostra tessere da
+// ~200px di lato e non ha senso mandarle un'immagine da 1600, mentre il visore
+// riempie lo schermo e ha bisogno di qualcosa di dignitoso mentre l'originale
+// arriva.
+const LATO_GRIGLIA = 500
+const LATO_GRANDE = 1600
 const QUALITA = 0.82
+const QUALITA_GRIGLIA = 0.72
 
 export type Anteprima = {
-  blob: Blob
+  blob: Blob          // la grande, per il visore
+  griglia: Blob       // la piccola, per il muro
   larghezza: number
   altezza: number
   durataMs?: number
 }
 
-function ridimensiona(l: number, a: number) {
-  const scala = Math.min(1, LATO_MAX / Math.max(l, a))
+function ridimensiona(l: number, a: number, lato = LATO_GRANDE) {
+  const scala = Math.min(1, lato / Math.max(l, a))
   return { l: Math.round(l * scala), a: Math.round(a * scala) }
 }
 
-async function suTela(sorgente: CanvasImageSource, l: number, a: number): Promise<Blob> {
-  const d = ridimensiona(l, a)
+async function suTela(
+  sorgente: CanvasImageSource, l: number, a: number,
+  lato = LATO_GRANDE, qualita = QUALITA,
+): Promise<Blob> {
+  const d = ridimensiona(l, a, lato)
   const tela = document.createElement('canvas')
   tela.width = d.l
   tela.height = d.a
   const ctx = tela.getContext('2d')!
+  // Il ridimensionamento di qualita' costa poco su una sola immagine e si vede
+  // sulle tessere piccole, dove i dettagli fini altrimenti sfarfallano.
+  ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(sorgente, 0, 0, d.l, d.a)
 
   const blob = await new Promise<Blob | null>((ok) =>
-    tela.toBlob(ok, 'image/webp', QUALITA),
+    tela.toBlob(ok, 'image/webp', qualita),
   )
   // Safari piu' vecchi non scrivono WebP: si ripiega su JPEG senza fare storie.
   if (blob) return blob
   return new Promise<Blob>((ok) =>
-    tela.toBlob((b) => ok(b!), 'image/jpeg', QUALITA),
+    tela.toBlob((b) => ok(b!), 'image/jpeg', qualita),
   )
+}
+
+/** Entrambe le misure da una sola decodifica del file. */
+async function dueMisure(sorgente: CanvasImageSource, l: number, a: number) {
+  return {
+    blob: await suTela(sorgente, l, a),
+    griglia: await suTela(sorgente, l, a, LATO_GRIGLIA, QUALITA_GRIGLIA),
+  }
 }
 
 /**
@@ -40,7 +61,7 @@ async function daFoto(file: File): Promise<Anteprima> {
   const bitmap = await createImageBitmap(file)
   try {
     const d = ridimensiona(bitmap.width, bitmap.height)
-    return { blob: await suTela(bitmap, bitmap.width, bitmap.height), larghezza: d.l, altezza: d.a }
+    return { ...(await dueMisure(bitmap, bitmap.width, bitmap.height)), larghezza: d.l, altezza: d.a }
   } finally {
     bitmap.close()
   }
@@ -74,9 +95,9 @@ function daVideo(file: File): Promise<Anteprima> {
     video.onseeked = async () => {
       clearTimeout(scaduto)
       try {
-        const blob = await suTela(video, video.videoWidth, video.videoHeight)
+        const misure = await dueMisure(video, video.videoWidth, video.videoHeight)
         const d = ridimensiona(video.videoWidth, video.videoHeight)
-        risolvi({ blob, larghezza: d.l, altezza: d.a, durataMs: Math.round(video.duration * 1000) })
+        risolvi({ ...misure, larghezza: d.l, altezza: d.a, durataMs: Math.round(video.duration * 1000) })
       } catch (e) {
         rifiuta(e)
       } finally {
@@ -101,7 +122,7 @@ async function ripiego(): Promise<Anteprima> {
   ctx.fillStyle = '#9CAF95'
   ctx.fillRect(0, 0, 800, 800)
   const blob = await new Promise<Blob>((ok) => tela.toBlob((b) => ok(b!), 'image/jpeg', 0.8))
-  return { blob, larghezza: 800, altezza: 800 }
+  return { blob, griglia: blob, larghezza: 800, altezza: 800 }
 }
 
 export async function creaAnteprima(file: File): Promise<Anteprima> {

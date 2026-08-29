@@ -101,17 +101,29 @@ async function mio(c: any, id: string): Promise<RigaMedia | null> {
   return r && r.ospite_id === c.var.ospite.id ? r : null
 }
 
-/** L'anteprima: piccola, un PUT solo, ed e' cio' che fa comparire la foto nel muro. */
+/**
+ * Le anteprime: un PUT ciascuna, ed e' cio' che fa comparire la foto nel muro.
+ *
+ * Ne arrivano due misure. Quella della griglia e' l'unica che il muro scarica,
+ * e pesa una decina di volte meno: mandare 1600 pixel per riempire una tessera
+ * da 200 era il motivo per cui il muro si popolava lentamente.
+ */
 media.put('/api/upload/anteprima/:id', async (c) => {
   const m = await mio(c, c.req.param('id'))
   if (!m) return c.json({ errore: 'non_trovato' }, 404)
 
-  await c.env.MEDIA.put(`anteprime/${m.id}.webp`, c.req.raw.body, {
+  const griglia = c.req.query('griglia') !== undefined
+  const chiave = griglia ? `griglia/${m.id}.webp` : `anteprime/${m.id}.webp`
+
+  await c.env.MEDIA.put(chiave, c.req.raw.body, {
     httpMetadata: { contentType: 'image/webp', cacheControl: 'public, max-age=31536000, immutable' },
   })
-  // Solo ora la foto puo' comparire nel muro degli altri: prima il loro
-  // telefono troverebbe un buco al posto dell'immagine.
-  await c.env.DB.prepare('update media set anteprima_pronta = 1 where id = ?').bind(m.id).run()
+
+  // La foto entra nel muro quando c'e' la miniatura della griglia: e' quella
+  // che il telefono degli altri andra' a cercare.
+  if (griglia) {
+    await c.env.DB.prepare('update media set anteprima_pronta = 1 where id = ?').bind(m.id).run()
+  }
   return c.json({ ok: true })
 })
 
@@ -192,7 +204,24 @@ media.get('/api/media', async (c) => {
 /** Serve anteprime e originali da R2, con supporto Range per il seek dei video. */
 media.get('/media/:genere/:id', async (c) => {
   const genere = c.req.param('genere')
-  if (genere !== 'anteprima' && genere !== 'originale') return c.notFound()
+  if (genere !== 'anteprima' && genere !== 'originale' && genere !== 'griglia') {
+    return c.notFound()
+  }
+
+  /**
+   * Le miniature restano nella cache del punto di rete piu' vicino.
+   *
+   * La chiave e' l'indirizzo senza cookie: la cache non decide chi puo'
+   * vedere cosa, quel controllo l'ha gia' fatto il middleware qui sopra. Cosi'
+   * il primo invitato che apre il muro paga il viaggio fino al deposito, e
+   * tutti gli altri al suo tavolo trovano l'immagine gia' pronta.
+   */
+  const cache = (caches as unknown as { default: Cache }).default
+  const chiaveCache = new Request(new URL(c.req.url).toString(), { method: 'GET' })
+  if (genere !== 'originale') {
+    const daCache = await cache.match(chiaveCache)
+    if (daCache) return daCache
+  }
 
   const riga = await c.env.DB.prepare(
     'select chiave_originale, chiave_anteprima from media where id = ?',
@@ -201,10 +230,18 @@ media.get('/media/:genere/:id', async (c) => {
   }>()
   if (!riga) return c.notFound()
 
-  const chiave = genere === 'anteprima' ? riga.chiave_anteprima : riga.chiave_originale
+  const chiave =
+    genere === 'originale' ? riga.chiave_originale
+    : genere === 'griglia' ? `griglia/${c.req.param('id')}.webp`
+    : riga.chiave_anteprima
   const range = c.req.header('range')
 
-  const oggetto = await c.env.MEDIA.get(chiave, range ? { range: c.req.raw.headers } : undefined)
+  let oggetto = await c.env.MEDIA.get(chiave, range ? { range: c.req.raw.headers } : undefined)
+  // Le foto caricate prima che esistesse la miniatura hanno solo la grande:
+  // meglio servire quella che lasciare un buco nel muro.
+  if (!oggetto && genere === 'griglia') {
+    oggetto = await c.env.MEDIA.get(riga.chiave_anteprima)
+  }
   if (!oggetto) return c.notFound()
 
   const h = new Headers()
@@ -218,9 +255,9 @@ media.get('/media/:genere/:id', async (c) => {
     h.set('content-disposition', `attachment; filename="${nome}"`)
   }
   // Doppia cintura: tipo passato al setaccio anche in uscita, e niente sniffing.
-  h.set('content-type', genere === 'anteprima'
-    ? 'image/webp'
-    : mimeSicuro(h.get('content-type') ?? undefined))
+  h.set('content-type', genere === 'originale'
+    ? mimeSicuro(h.get('content-type') ?? undefined)
+    : 'image/webp')
   h.set('x-content-type-options', 'nosniff')
   h.set('content-security-policy', "default-src 'none'; sandbox")
   h.set('etag', oggetto.httpEtag)
@@ -228,6 +265,13 @@ media.get('/media/:genere/:id', async (c) => {
   // condivise a monte, che la servirebbero senza controllare il cookie.
   h.set('cache-control', 'private, max-age=31536000, immutable')
   h.set('accept-ranges', 'bytes')
+
+  if (genere !== 'originale') {
+    const risposta = new Response(oggetto.body, { headers: h })
+    // Una copia alla cache, l'altra a chi ha chiesto.
+    c.executionCtx.waitUntil(cache.put(chiaveCache, risposta.clone()))
+    return risposta
+  }
 
   if (oggetto.range && 'offset' in oggetto.range) {
     const inizio = oggetto.range.offset ?? 0

@@ -116,7 +116,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
 
   return (
     <Tirare aggiorna={() => ricaricaTutto.current()}>
-    <div className="min-h-dvh spazio-barra flex flex-col">
+    <div className="min-h-svh spazio-barra flex flex-col">
       {admin && (
         <div className="bg-salvia text-crema px-4 py-3 flex items-center justify-between gap-3">
           <span className="text-[13px]">{t.modoSposi}</span>
@@ -217,8 +217,12 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
                 </span>
               ) : (
                 <img
-                  src={`/media/anteprima/${m.id}`}
-                  loading="lazy"
+                  src={`/media/griglia/${m.id}`}
+                  // Le prime tessere sono quelle che si vedono aprendo l'app:
+                  // vanno chieste subito, non quando entrano nello schermo.
+                  loading={i < 6 ? 'eager' : 'lazy'}
+                  fetchPriority={i < 4 ? 'high' : 'auto'}
+                  decoding="async"
                   // Vuoto di proposito: la didascalia sotto dice gia' chi l'ha
                   // caricata, e un testo alternativo qui finirebbe stampato
                   // sulla tessera se l'immagine non arriva.

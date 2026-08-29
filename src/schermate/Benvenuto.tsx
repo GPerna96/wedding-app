@@ -57,7 +57,7 @@ export function Benvenuto({ sposi, token, admin, entrato }: {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center px-7 text-center comparsa relative">
+    <div className="min-h-svh flex flex-col items-center justify-center px-7 text-center comparsa relative">
       <Foglie />
 
       <div className="relative z-10 flex flex-col items-center w-full">

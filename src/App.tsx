@@ -64,7 +64,7 @@ export function App() {
     return () => window.removeEventListener('beforeunload', guardia)
   }, [])
 
-  if (!io) return <div className="min-h-dvh grid place-items-center text-fumo">…</div>
+  if (!io) return <div className="min-h-svh grid place-items-center text-fumo">…</div>
 
   if (!io.dentro) {
     return (

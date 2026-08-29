@@ -43,6 +43,7 @@ export function Tirare({ aggiorna, children }: {
       partenza.current = null
       if (!arrivato || inCorso) return setTiro(0)
 
+
       setInCorso(true)
       setTiro(SOGLIA)
       if (navigator.vibrate) navigator.vibrate(15)
@@ -54,12 +55,18 @@ export function Tirare({ aggiorna, children }: {
       }
     }
 
+    // Se il gesto si interrompe fuori dai casi previsti (chiamata in arrivo,
+    // app in secondo piano) il contenuto resterebbe spostato: si riazzera.
+    const rimetti = () => { if (document.visibilityState === 'visible') setTiro(0) }
+    document.addEventListener('visibilitychange', rimetti)
+
     // passive: false, altrimenti il browser non lascia bloccare lo scorrimento.
     window.addEventListener('touchstart', inizio, { passive: true })
     window.addEventListener('touchmove', muove, { passive: false })
     window.addEventListener('touchend', fine)
     window.addEventListener('touchcancel', fine)
     return () => {
+      document.removeEventListener('visibilitychange', rimetti)
       window.removeEventListener('touchstart', inizio)
       window.removeEventListener('touchmove', muove)
       window.removeEventListener('touchend', fine)
