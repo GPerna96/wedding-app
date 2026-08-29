@@ -77,7 +77,7 @@ export function Installa({ attivo }: { attivo: boolean }) {
   if (!attivo || !installabile || rimandato) return null
 
   return (
-    <div className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 bg-carta border border-salvia-velo
+    <div className="fixed inset-x-3 bottom-[calc(var(--barra,5rem)+0.75rem)] z-20 bg-carta border border-salvia-velo
                     rounded-2xl shadow-lg px-4 py-3.5 flex items-start gap-3 comparsa">
       <span className="text-salvia mt-0.5"><IconaInstalla className="w-6 h-6" /></span>
       <div className="flex-1 min-w-0">

@@ -12,6 +12,40 @@ type Vista = 'muro' | 'messaggi'
  * al titolo.
  */
 export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista) => void }) {
+  const barra = useRef<HTMLElement>(null)
+
+  /**
+   * L'altezza vera della barra, misurata, non stimata.
+   *
+   * Ogni browser riserva lo spazio a modo suo: Safari su iPhone dichiara la
+   * zona sicura dell'home indicator, Chrome su iPhone ha una propria barra in
+   * fondo e conta diversamente. Qualunque valore fisso sbaglia da qualche
+   * parte, e il fondo del muro finisce sotto la barra. Misurarlo e passarlo al
+   * CSS toglie di mezzo il problema per tutti.
+   */
+  useEffect(() => {
+    const e = barra.current
+    if (!e) return
+
+    const misura = () => {
+      document.documentElement.style.setProperty('--barra', `${e.offsetHeight}px`)
+    }
+    misura()
+
+    const osservatore = new ResizeObserver(misura)
+    osservatore.observe(e)
+    // La barra del browser che va e viene cambia la viewport senza toccare la
+    // barra: anche li' la misura va rifatta.
+    window.visualViewport?.addEventListener('resize', misura)
+    window.addEventListener('orientationchange', misura)
+
+    return () => {
+      osservatore.disconnect()
+      window.visualViewport?.removeEventListener('resize', misura)
+      window.removeEventListener('orientationchange', misura)
+    }
+  }, [])
+
   const [menu, setMenu] = useState(false)
   const scatta = useRef<HTMLInputElement>(null)
   const galleria = useRef<HTMLInputElement>(null)
@@ -84,6 +118,7 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
       <input ref={galleria} type="file" accept="image/*,video/*" multiple hidden onChange={ricevi} />
 
       <nav
+        ref={barra}
         className={`fixed inset-x-0 bottom-0 z-30 bg-carta/95 backdrop-blur border-t
                     border-salvia-velo transition-transform duration-200
                     ${tastiera ? 'translate-y-full' : ''}`}
