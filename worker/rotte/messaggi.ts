@@ -10,7 +10,6 @@ messaggi.get('/api/messaggi', async (c) => {
   const { results } = await c.env.DB.prepare(
     `select m.id, m.testo, m.creato_il, o.nome
        from messaggi m join ospiti o on o.id = m.ospite_id
-      where m.nascosto = 0
       order by m.creato_il desc
       limit 200`,
   ).all()

@@ -1,6 +1,5 @@
 export type MediaRiga = {
   id: string
-  nascosto?: number
   tipo: 'foto' | 'video'
   larghezza: number | null
   altezza: number | null
@@ -41,12 +40,8 @@ export const api = {
 
   media: (dopo = 0) => leggi<{ media: MediaRiga[]; ospiti: number }>(`/api/media?dopo=${dopo}`),
 
-  nascondi: (tipo: 'media' | 'messaggi', id: string, nascosto: boolean) =>
-    fetch('/api/sposi/nascondi', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tipo, id, nascosto }),
-    }).then((r) => {
+  elimina: (tipo: 'media' | 'messaggi', id: string) =>
+    fetch(`/api/sposi/${tipo}/${id}`, { method: 'DELETE' }).then((r) => {
       if (!r.ok) throw new Error(String(r.status))
     }),
 

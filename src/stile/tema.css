@@ -58,6 +58,12 @@
 @layer utilities {
   .sicura-sotto { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   .sicura-sopra { padding-top: max(1rem, env(safe-area-inset-top)); }
+
+  /* Spazio sotto il contenuto delle schermate con la barra fissa. La barra e'
+     alta quanto le sue voci piu' la zona sicura dell'home indicator, che su un
+     iPhone col notch vale 34px: un margine fisso lasciava il fondo del muro
+     sotto la barra. */
+  .spazio-barra { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
 }
 
 @keyframes comparsa {

@@ -1,6 +1,5 @@
 import { Hono } from 'hono'
-import { getCookie } from 'hono/cookie'
-import { richiedeOspite, richiedeSessione, verifica } from '../sessione'
+import { richiedeOspite, richiedeSessione } from '../sessione'
 import type { Env, Variabili } from '../tipi'
 
 export const media = new Hono<{ Bindings: Env; Variables: Variabili }>()
@@ -110,6 +109,9 @@ media.put('/api/upload/anteprima/:id', async (c) => {
   await c.env.MEDIA.put(`anteprime/${m.id}.webp`, c.req.raw.body, {
     httpMetadata: { contentType: 'image/webp', cacheControl: 'public, max-age=31536000, immutable' },
   })
+  // Solo ora la foto puo' comparire nel muro degli altri: prima il loro
+  // telefono troverebbe un buco al posto dell'immagine.
+  await c.env.DB.prepare('update media set anteprima_pronta = 1 where id = ?').bind(m.id).run()
   return c.json({ ok: true })
 })
 
@@ -170,18 +172,14 @@ media.post('/api/upload/completa/:id', async (c) => {
 /** Il muro. `dopo` permette al polling di chiedere solo le novita'. */
 media.get('/api/media', async (c) => {
   const dopo = Number(c.req.query('dopo') ?? 0)
-  // Gli sposi vedono anche cio' che hanno nascosto: e' l'unico modo per
-  // rimettere in mostra qualcosa dopo averlo tolto.
-  const admin = (await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)) === 'ok'
-
   const { results } = await c.env.DB.prepare(
-    `select m.id, m.tipo, m.larghezza, m.altezza, m.durata_ms, m.stato, m.nascosto,
+    `select m.id, m.tipo, m.larghezza, m.altezza, m.durata_ms, m.stato,
             m.creato_il, o.nome
        from media m join ospiti o on o.id = m.ospite_id
-      where (m.nascosto = 0 or ?) and m.creato_il > ?
+      where m.anteprima_pronta = 1 and m.creato_il > ?
       order by m.creato_il desc
       limit 300`,
-  ).bind(admin ? 1 : 0, dopo).all()
+  ).bind(dopo).all()
 
   // Quanti sono entrati finora: si vede sotto il titolo e da' il senso della
   // festa collettiva a chi apre l'app da solo al proprio tavolo.
@@ -197,15 +195,11 @@ media.get('/media/:genere/:id', async (c) => {
   if (genere !== 'anteprima' && genere !== 'originale') return c.notFound()
 
   const riga = await c.env.DB.prepare(
-    'select chiave_originale, chiave_anteprima, nascosto from media where id = ?',
+    'select chiave_originale, chiave_anteprima from media where id = ?',
   ).bind(c.req.param('id')).first<{
-    chiave_originale: string; chiave_anteprima: string; nascosto: number
+    chiave_originale: string; chiave_anteprima: string
   }>()
   if (!riga) return c.notFound()
-  if (riga.nascosto) {
-    const admin = (await verifica(getCookie(c, 'sposi'), c.env.SEGRETO_ADMIN)) === 'ok'
-    if (!admin) return c.notFound()
-  }
 
   const chiave = genere === 'anteprima' ? riga.chiave_anteprima : riga.chiave_originale
   const range = c.req.header('range')

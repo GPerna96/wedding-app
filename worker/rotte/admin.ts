@@ -13,7 +13,8 @@ admin.post('/api/sposi/entra', async (c) => {
 })
 
 admin.use('/api/sposi/tutto', richiedeAdmin)
-admin.use('/api/sposi/nascondi', richiedeAdmin)
+admin.use('/api/sposi/media/*', richiedeAdmin)
+admin.use('/api/sposi/messaggi/*', richiedeAdmin)
 admin.use('/api/sposi/elenco', richiedeAdmin)
 admin.use('/api/sposi/deposito', richiedeAdmin)
 admin.use('/api/sposi/pulisci-orfani', richiedeAdmin)
@@ -22,12 +23,12 @@ admin.use('/api/sposi/archivio', richiedeAdmin)
 /** Come il muro, ma vede anche il nascosto e gli upload incompleti. */
 admin.get('/api/sposi/tutto', async (c) => {
   const media = await c.env.DB.prepare(
-    `select m.id, m.tipo, m.stato, m.nascosto, m.byte, m.nome_file, m.creato_il, o.nome
+    `select m.id, m.tipo, m.stato, m.byte, m.nome_file, m.creato_il, o.nome
        from media m join ospiti o on o.id = m.ospite_id
       order by m.creato_il desc`,
   ).all()
   const messaggi = await c.env.DB.prepare(
-    `select m.id, m.testo, m.nascosto, m.creato_il, o.nome
+    `select m.id, m.testo, m.creato_il, o.nome
        from messaggi m join ospiti o on o.id = m.ospite_id
       order by m.creato_il desc`,
   ).all()
@@ -41,14 +42,38 @@ admin.get('/api/sposi/tutto', async (c) => {
   return c.json({ media: media.results, messaggi: messaggi.results, conteggi })
 })
 
-admin.post('/api/sposi/nascondi', async (c) => {
-  const { tipo, id, nascosto } = await c.req.json<{
-    tipo: 'media' | 'messaggi'; id: string; nascosto: boolean
+/**
+ * Elimina un ricordo per davvero: la riga, l'originale e l'anteprima.
+ *
+ * Nascondere lasciava il file nel deposito a occupare spazio e a ricomparire
+ * nell'archivio finale. Se gli sposi decidono che uno scatto non deve restare,
+ * deve sparire del tutto.
+ */
+admin.delete('/api/sposi/media/:id', async (c) => {
+  const id = c.req.param('id')
+  const riga = await c.env.DB.prepare(
+    'select chiave_originale, chiave_anteprima, upload_id from media where id = ?',
+  ).bind(id).first<{
+    chiave_originale: string; chiave_anteprima: string; upload_id: string | null
   }>()
-  if (tipo !== 'media' && tipo !== 'messaggi') return c.json({ errore: 'tipo' }, 400)
+  if (!riga) return c.json({ errore: 'non_trovato' }, 404)
 
-  await c.env.DB.prepare(`update ${tipo} set nascosto = ? where id = ?`)
-    .bind(nascosto ? 1 : 0, id).run()
+  // Un caricamento ancora in corso va prima interrotto, altrimenti le parti
+  // gia' inviate resterebbero nel deposito senza che nulla le nomini.
+  if (riga.upload_id) {
+    try {
+      await c.env.MEDIA.resumeMultipartUpload(riga.chiave_originale, riga.upload_id).abort()
+    } catch { /* gia' concluso o gia' interrotto */ }
+  }
+
+  await c.env.MEDIA.delete([riga.chiave_originale, riga.chiave_anteprima])
+  await c.env.DB.prepare('delete from media where id = ?').bind(id).run()
+
+  return c.json({ ok: true })
+})
+
+admin.delete('/api/sposi/messaggi/:id', async (c) => {
+  await c.env.DB.prepare('delete from messaggi where id = ?').bind(c.req.param('id')).run()
   return c.json({ ok: true })
 })
 

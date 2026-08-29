@@ -3,6 +3,9 @@ import { api, type MediaRiga } from '../api'
 import { t, quando } from '../lingua'
 import { coda, type Lavoro } from '../upload/coda'
 import { AccessoSposi } from './AccessoSposi'
+import { Tirare } from './Tirare'
+import { VoceInstalla } from '../Installa'
+import { ConfermaElimina } from './ConfermaElimina'
 
 const INTERVALLO = 8000
 
@@ -17,6 +20,12 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
   const [lavori, setLavori] = useState<Lavoro[]>([])
   const [quanti, setQuanti] = useState(0)
   const [inRete, setInRete] = useState(() => navigator.onLine)
+  // Un'anteprima puo' non arrivare comunque: rete ballerina, cache storta.
+  // Meglio un riquadro pulito che l'icona di immagine rotta con il testo
+  // alternativo sparato in grande.
+  const [rotte, setRotte] = useState<Set<string>>(new Set())
+  const quanteColonne = useColonne()
+  const [daEliminare, setDaEliminare] = useState<MediaRiga | null>(null)
   // Momento del piu' recente gia' in elenco: e' il segnalibro del polling.
   const ultimoVisto = useRef(0)
 
@@ -40,6 +49,9 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
 
   // Polling invece di WebSocket: nessuna connessione da tenere viva, nessuna
   // riconnessione da gestire quando il wifi della sala fa i capricci.
+  // Serve anche al gesto di trascinamento, non solo al giro periodico.
+  const ricaricaTutto = useRef<() => Promise<void>>(async () => {})
+
   useEffect(() => {
     if (inPausa) return
     let vivo = true
@@ -69,6 +81,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
       } catch { /* la prossima passata ci riprova */ }
     }
 
+    ricaricaTutto.current = () => ricarica(true)
     ricarica(true)
     const t = setInterval(() => {
       if (document.visibilityState === 'visible') ricarica()
@@ -87,19 +100,23 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
 
   const inCorso = lavori.filter((l) => l.stato !== 'fatto')
 
-  async function cambiaVisibilita(m: MediaRiga) {
-    const prossimo = m.nascosto ? 0 : 1
-    // Cambia subito sotto il dito, poi si allinea al server.
-    setElenco((e) => e.map((x) => (x.id === m.id ? { ...x, nascosto: prossimo } : x)))
-    try {
-      await api.nascondi('media', m.id, !m.nascosto)
-    } catch {
-      setElenco((e) => e.map((x) => (x.id === m.id ? { ...x, nascosto: m.nascosto } : x)))
-    }
+  // Le colonne CSS riempiono la prima fino in fondo prima di passare alla
+  // seconda: con due sole foto restavano entrambe a sinistra e mezzo schermo
+  // vuoto. Qui ogni foto va nella colonna piu' corta, stimandone l'altezza
+  // dalle proporzioni, cosi' il muro resta equilibrato da subito.
+  const colonne = distribuisci(elenco, quanteColonne)
+
+  async function elimina(m: MediaRiga) {
+    await api.elimina('media', m.id)
+    // Sparisce subito dal muro: il giro periodico non lo riporterebbe comunque
+    // indietro, ma lasciarlo li' fino al prossimo controllo sarebbe strano.
+    setElenco((e) => e.filter((x) => x.id !== m.id))
+    setDaEliminare(null)
   }
 
   return (
-    <div className="min-h-dvh pb-24">
+    <Tirare aggiorna={() => ricaricaTutto.current()}>
+    <div className="min-h-dvh spazio-barra flex flex-col">
       {admin && (
         <div className="bg-salvia text-crema px-4 py-3 flex items-center justify-between gap-3">
           <span className="text-[13px]">{t.modoSposi}</span>
@@ -173,24 +190,43 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
           </p>
         </div>
       ) : (
-        <div className="px-3 columns-2 sm:columns-3 lg:columns-4 xl:columns-5 gap-3 [&>*]:mb-3 max-w-6xl mx-auto">
-          {elenco.map((m, i) => (
+        <div className="px-3 flex gap-3 items-start max-w-6xl mx-auto">
+          {colonne.map((colonna, ci) => (
+            <div key={ci} className="flex-1 min-w-0 flex flex-col gap-3">
+          {colonna.map(({ m, i }) => (
             <button
               key={m.id}
               onClick={() => apri(i, elenco)}
-              className={`block w-full break-inside-avoid relative rounded-2xl overflow-hidden
+              className={`block w-full relative rounded-2xl overflow-hidden
                          bg-salvia-velo active:scale-[0.98] transition-transform
-                         ${m.nascosto ? 'opacity-45 ring-2 ring-red-800/40' : ''}`}
+                         `}
               style={{
                 aspectRatio: m.larghezza && m.altezza ? `${m.larghezza}/${m.altezza}` : '1',
               }}
             >
-              <img
-                src={`/media/anteprima/${m.id}`}
-                loading="lazy"
-                alt={m.nome}
-                className="w-full h-full object-cover"
-              />
+              {rotte.has(m.id) ? (
+                /* Una foglia sul fondo salvia: se un'anteprima non arriva, la
+                   tessera resta parte del muro invece di sembrare guasta. */
+                <span className="absolute inset-0 grid place-items-center bg-salvia-velo text-salvia/35">
+                  <svg viewBox="0 0 24 24" className="w-10 h-10" fill="none" stroke="currentColor"
+                       strokeWidth="1.2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M12 21c0-6 0-9 0-12" />
+                    <path d="M12 9c0-3.4 2.4-6 6-6.5.4 3.6-1.6 6.9-6 7.5z" />
+                    <path d="M12 13.5C12 10 9.6 7.4 5.6 7c-.4 3.4 1.6 6.4 6.4 6.5z" />
+                  </svg>
+                </span>
+              ) : (
+                <img
+                  src={`/media/anteprima/${m.id}`}
+                  loading="lazy"
+                  // Vuoto di proposito: la didascalia sotto dice gia' chi l'ha
+                  // caricata, e un testo alternativo qui finirebbe stampato
+                  // sulla tessera se l'immagine non arriva.
+                  alt=""
+                  onError={() => setRotte((r) => new Set(r).add(m.id))}
+                  className="w-full h-full object-cover"
+                />
+              )}
               {m.tipo === 'video' && (
                 <span className="absolute top-2 right-2 bg-black/45 backdrop-blur-sm rounded-full
                                  w-7 h-7 grid place-items-center text-white text-[10px]">
@@ -201,12 +237,12 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
                 <span
                   role="button"
                   tabIndex={0}
-                  onClick={(e) => { e.stopPropagation(); cambiaVisibilita(m) }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); cambiaVisibilita(m) } }}
+                  onClick={(e) => { e.stopPropagation(); setDaEliminare(m) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setDaEliminare(m) } }}
                   className="absolute top-2 left-2 bg-black/55 backdrop-blur-sm rounded-full
                              px-2.5 py-1 text-white text-[11px]"
                 >
-                  {m.nascosto ? t.mostra : t.nascondi}
+                  {t.elimina}
                 </span>
               )}
               <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent
@@ -216,10 +252,64 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
               </span>
             </button>
           ))}
+            </div>
+          ))}
         </div>
       )}
 
-      <AccessoSposi />
+      {/* mt-auto: con poche foto l'accesso resta in fondo allo schermo invece
+          di galleggiare a meta' pagina con il vuoto sotto. */}
+      <div className="mt-auto">
+        <VoceInstalla />
+        <AccessoSposi />
+      </div>
+
+      {daEliminare && (
+        <ConfermaElimina
+          media={daEliminare}
+          chiudi={() => setDaEliminare(null)}
+          conferma={() => elimina(daEliminare)}
+        />
+      )}
     </div>
+    </Tirare>
   )
+}
+
+/** Colonne in base allo spazio: due sul telefono, di piu' quando ce n'e'. */
+function useColonne() {
+  const [n, setN] = useState(() => calcolaColonne())
+  useEffect(() => {
+    const guarda = () => setN(calcolaColonne())
+    window.addEventListener('resize', guarda)
+    return () => window.removeEventListener('resize', guarda)
+  }, [])
+  return n
+}
+
+function calcolaColonne() {
+  const w = window.innerWidth
+  if (w >= 1280) return 5
+  if (w >= 1024) return 4
+  if (w >= 640) return 3
+  return 2
+}
+
+/**
+ * Ogni foto nella colonna piu' bassa, stimando l'ingombro dalle proporzioni.
+ * L'ordine resta quello del muro: la piu' recente in alto a sinistra.
+ */
+function distribuisci(elenco: MediaRiga[], quante: number) {
+  const colonne: { m: MediaRiga; i: number }[][] = Array.from({ length: quante }, () => [])
+  const altezze = new Array(quante).fill(0)
+
+  elenco.forEach((m, i) => {
+    const proporzione = m.larghezza && m.altezza ? m.altezza / m.larghezza : 1
+    let piuBassa = 0
+    for (let c = 1; c < quante; c++) if (altezze[c] < altezze[piuBassa]) piuBassa = c
+    colonne[piuBassa].push({ m, i })
+    altezze[piuBassa] += proporzione + 0.06   // il margine fra una e l'altra
+  })
+
+  return colonne
 }
