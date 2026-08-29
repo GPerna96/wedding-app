@@ -133,7 +133,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
         {nome && (
           <p className="text-salvia text-sm mb-1">{t.ciao(nome.split(' ')[0])}</p>
         )}
-        <h1 className="titolo text-[28px]">{sposi}</h1>
+        <h1 className="nomi text-salvia text-[34px] leading-tight">{sposi}</h1>
         <p className="text-fumo text-sm mt-1.5">
           {elenco.length > 0 ? t.ricordiFinora(elenco.length) : t.primoRicordo}
           {quanti > 0 && <span className="text-fumo/60"> · {t.siamoIn(quanti)}</span>}

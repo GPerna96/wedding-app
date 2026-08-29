@@ -65,10 +65,12 @@ export function Benvenuto({ sposi, token, admin, entrato }: {
           {t.matrimonioDi}
         </p>
 
-        <h1 className="titolo text-inchiostro leading-[1.05]">
-          <span className="block text-6xl">{primo}</span>
-          <span className="block text-3xl text-salvia my-2">&amp;</span>
-          <span className="block text-6xl">{secondo}</span>
+        {/* Come nella partecipazione: nomi grandi in corsivo, la e commerciale
+            piccola in mezzo, tutto nel verde salvia. */}
+        <h1 className="nomi text-salvia leading-[0.95]">
+          <span className="block text-[62px]">{primo}</span>
+          <span className="block text-[30px] my-1">&amp;</span>
+          <span className="block text-[62px]">{secondo}</span>
         </h1>
 
         <div className="w-16 h-px bg-salvia-chiara my-9" />
