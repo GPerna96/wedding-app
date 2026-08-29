@@ -87,9 +87,10 @@ export function BarraAzioni({ vista, cambia }: { vista: Vista; cambia: (v: Vista
       <nav
         ref={barra}
         // shrink-0: non deve cedere spazio quando il contenuto e' lungo.
+        // Niente overflow nascosto: il pulsante della fotocamera sporge sopra
+        // il bordo di proposito, e verrebbe tagliato a meta'.
         className={`shrink-0 z-30 bg-carta border-t border-salvia-velo
-                    transition-[height,opacity] duration-200 overflow-hidden
-                    ${tastiera ? 'h-0 opacity-0' : ''}`}
+                    ${tastiera ? 'hidden' : ''}`}
       >
         <div className="flex items-center justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Scheda

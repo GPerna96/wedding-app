@@ -31,21 +31,32 @@
 }
 
 @layer base {
+  /*
+   * Il documento non scorre. Mai.
+   *
+   * Fissare l'altezza del solo guscio non bastava: sotto restavano html e body
+   * liberi di scorrere, ed e' quello che su Chrome iPhone portava il contenuto
+   * sotto la barra. Qui il documento viene inchiodato allo schermo e l'unica
+   * cosa che si muove e' l'area centrale.
+   */
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
   html {
     background: var(--color-crema);
-    /* Safari mobile: niente zoom involontario, niente rimbalzo elastico. Il
-       blocco va su entrambi gli elementi, su html da solo iOS lo ignora. */
-    -webkit-text-size-adjust: 100%;
-    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;   /* niente zoom involontario su iOS */
   }
   body {
     font-family: var(--font-corpo);
     color: var(--color-inchiostro);
-    overscroll-behavior: none;
-    /* Nessun contenuto puo' sporgere di lato: e' li' che nascono gli
-       scorrimenti orizzontali involontari. */
-    overflow-x: hidden;
+    /* fixed e non solo overflow:hidden: su iOS il documento si trascina
+       comunque, con il rimbalzo elastico, se non lo si ancora. */
+    position: fixed;
+    inset: 0;
   }
+  #radice { height: 100%; }
   h1, h2, .titolo {
     font-family: var(--font-titolo);
     font-weight: 300;

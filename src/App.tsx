@@ -64,7 +64,7 @@ export function App() {
     return () => window.removeEventListener('beforeunload', guardia)
   }, [])
 
-  if (!io) return <div className="h-svh grid place-items-center text-fumo">…</div>
+  if (!io) return <div className="h-full grid place-items-center text-fumo">…</div>
 
   if (!io.dentro) {
     return (
@@ -91,7 +91,7 @@ export function App() {
    * sotto cui possa finire.
    */
   return (
-    <div className="h-svh flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       <main data-scorrevole className="flex-1 overflow-y-auto overscroll-contain">
       {vista === 'muro'
         ? (
