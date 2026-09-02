@@ -40,13 +40,51 @@ export function Visore({ elenco, indice, chiudi }: {
     if (delta > 50) setI((x) => Math.max(x - 1, 0))
   }
 
+  /*
+   * L'immagine non sta piu' dentro una colonna flessibile.
+   *
+   * Su iPhone l'altezza utile cambia mentre le barre del browser entrano ed
+   * escono, e una foto verticale finiva tagliata sopra e sotto. Qui e' uno
+   * strato che copre lo schermo e si contiene da solo -- comandi e didascalie
+   * le stanno sopra, senza toglierle spazio.
+   */
+  const dentro = 'absolute inset-0 w-full h-full object-contain px-2 pt-20 pb-24'
+
   return (
     <div
-      className="fixed inset-0 z-50 bg-black flex flex-col"
+      className="fixed inset-0 z-50 bg-black"
       onTouchStart={inizio}
       onTouchEnd={fine}
     >
-      <div className="sicura-sopra px-4 pb-3 flex items-center justify-between text-white/90">
+      {!intero && m.tipo === 'foto' ? (
+        <img key={m.id} src={grande} alt={m.nome} decoding="async" className={dentro} />
+      ) : m.tipo === 'video' ? (
+        <video
+          key={m.id}
+          src={`/media/originale/${m.id}`}
+          poster={grande}
+          controls
+          autoPlay
+          playsInline
+          className={dentro}
+        />
+      ) : (
+        /* L'anteprima grande arriva in un attimo e riempie lo schermo mentre
+           l'originale -- che puo' pesare qualche mega -- e' ancora in volo.
+           Il browser sostituisce da solo quando il secondo e' pronto. */
+        <img
+          key={m.id}
+          src={`/media/originale/${m.id}`}
+          srcSet={`${grande} 1600w, /media/originale/${m.id} 4000w`}
+          sizes="100vw"
+          alt={m.nome}
+          decoding="async"
+          className={dentro}
+        />
+      )}
+
+      <div className="absolute inset-x-0 top-0 sicura-sopra px-4 pb-6 flex items-start justify-between
+                      text-white/90 bg-gradient-to-b from-black/70 to-transparent">
         <div className="min-w-0">
           <p className="text-[15px] font-medium truncate">{m.nome}</p>
           <p className="text-[12px] text-white/50">{quando(m.creato_il)}</p>
@@ -77,65 +115,30 @@ export function Visore({ elenco, indice, chiudi }: {
         </div>
       </div>
 
-      {/* min-h-0: senza, il riquadro cresce oltre lo schermo invece di
-          stringersi, e una foto verticale finisce tagliata sopra e sotto. */}
-      <div className="flex-1 min-h-0 grid place-items-center overflow-hidden">
-        {!intero && m.tipo === 'foto' ? (
-          <img
-            key={m.id}
-            src={grande}
-            alt={m.nome}
-            decoding="async"
-            className="max-w-full max-h-full w-auto h-auto object-contain"
-          />
-        ) : m.tipo === 'video' ? (
-          <video
-            key={m.id}
-            src={`/media/originale/${m.id}`}
-            poster={grande}
-            controls
-            autoPlay
-            playsInline
-            className="max-w-full max-h-full w-auto h-auto"
-          />
-        ) : (
-          /* L'anteprima grande arriva in un attimo e riempie lo schermo mentre
-             l'originale -- che puo' pesare qualche mega -- e' ancora in volo.
-             Il browser sostituisce da solo quando il secondo e' pronto. */
-          <img
-            key={m.id}
-            src={`/media/originale/${m.id}`}
-            srcSet={`${grande} 1600w, /media/originale/${m.id} 4000w`}
-            sizes="100vw"
-            alt={m.nome}
-            decoding="async"
-            className="max-w-full max-h-full w-auto h-auto object-contain"
-          />
+      <div className="absolute inset-x-0 bottom-0 sicura-sotto px-4 pt-6 bg-gradient-to-t from-black/70 to-transparent">
+        {!intero && (
+          <p className="pb-2 text-white/60 text-[12px] leading-relaxed text-center">
+            {t.spiegaOriginaleMancante}
+          </p>
         )}
-      </div>
 
-      {!intero && (
-        <p className="px-5 pt-3 text-white/55 text-[13px] leading-relaxed text-center">
-          {t.spiegaOriginaleMancante}
-        </p>
-      )}
-
-      <div className="sicura-sotto px-4 pt-3 flex items-center justify-between text-white/70 text-[14px]">
-        <button
-          onClick={() => setI((x) => Math.max(x - 1, 0))}
-          disabled={i === 0}
-          className="px-4 py-2 disabled:opacity-25"
-        >
-          {t.prima}
-        </button>
-        <span>{i + 1} / {elenco.length}</span>
-        <button
-          onClick={() => setI((x) => Math.min(x + 1, elenco.length - 1))}
-          disabled={i === elenco.length - 1}
-          className="px-4 py-2 disabled:opacity-25"
-        >
-          {t.dopo}
-        </button>
+        <div className="flex items-center justify-between text-white/70 text-[14px]">
+          <button
+            onClick={() => setI((x) => Math.max(x - 1, 0))}
+            disabled={i === 0}
+            className="px-4 py-2 disabled:opacity-25"
+          >
+            {t.prima}
+          </button>
+          <span>{i + 1} / {elenco.length}</span>
+          <button
+            onClick={() => setI((x) => Math.min(x + 1, elenco.length - 1))}
+            disabled={i === elenco.length - 1}
+            className="px-4 py-2 disabled:opacity-25"
+          >
+            {t.dopo}
+          </button>
+        </div>
       </div>
     </div>
   )

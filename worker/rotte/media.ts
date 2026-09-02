@@ -310,6 +310,11 @@ media.get('/media/:genere/:id', async (c) => {
   if (!oggetto && genere === 'griglia') {
     oggetto = await c.env.MEDIA.get(riga.chiave_anteprima)
   }
+  // E viceversa: l'anteprima grande adesso parte per ultima, dopo l'originale.
+  // Nei secondi in cui non c'e' ancora, la miniatura fa il suo lavoro.
+  if (!oggetto && genere === 'anteprima') {
+    oggetto = await c.env.MEDIA.get(`griglia/${c.req.param('id')}.webp`)
+  }
   /*
    * L'originale puo' mancare: la miniatura era arrivata, il file no. Prima si
    * rispondeva con la pagina di errore, e il telefono la salvava come file di

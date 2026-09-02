@@ -67,15 +67,53 @@ class ErroreInvio extends Error {
   }
 }
 
+function daStato(stato: number) {
+  // 413 e 507: il file non ci sta o lo spazio e' finito. Ritentare non serve.
+  if (stato === 413) return new ErroreInvio('troppoGrande', true)
+  if (stato === 507 || stato === 429) return new ErroreInvio('server', true)
+  if (stato >= 500) return new ErroreInvio('server')
+  return new ErroreInvio('ignoto', stato >= 400 && stato < 500)
+}
+
 async function json<T>(r: Response): Promise<T> {
-  if (!r.ok) {
-    // 413 e 507: il file non ci sta o lo spazio e' finito. Ritentare non serve.
-    if (r.status === 413) throw new ErroreInvio('troppoGrande', true)
-    if (r.status === 507 || r.status === 429) throw new ErroreInvio('server', true)
-    if (r.status >= 500) throw new ErroreInvio('server')
-    throw new ErroreInvio('ignoto', r.status >= 400 && r.status < 500)
-  }
+  if (!r.ok) throw daStato(r.status)
   return r.json() as Promise<T>
+}
+
+/**
+ * Un invio che racconta a che punto e'.
+ *
+ * Con fetch non c'e' modo di sapere quanti byte sono partiti: la barra restava
+ * ferma per tutto il tempo -- che su una foto da dodici mega e' quasi tutto il
+ * tempo -- e poi saltava alla fine. Chi guardava pensava che si fosse piantata,
+ * tanto piu' che la foto era gia' comparsa nel muro grazie alla miniatura.
+ * XMLHttpRequest, piu' vecchio, questo lo sa dire.
+ */
+function invia<T>(metodo: string, url: string, corpo: Blob | null, opzioni: {
+  intestazioni?: Record<string, string>
+  avanza?: (frazione: number) => void
+} = {}): Promise<T> {
+  return new Promise<T>((risolvi, rifiuta) => {
+    const x = new XMLHttpRequest()
+    x.open(metodo, url)
+    for (const [k, v] of Object.entries(opzioni.intestazioni ?? {})) x.setRequestHeader(k, v)
+
+    if (opzioni.avanza) {
+      x.upload.onprogress = (e) => {
+        if (e.lengthComputable) opzioni.avanza!(e.loaded / e.total)
+      }
+    }
+    x.onload = () => {
+      if (x.status >= 200 && x.status < 300) {
+        try { risolvi(JSON.parse(x.responseText) as T) } catch { risolvi({} as T) }
+      } else {
+        rifiuta(daStato(x.status))
+      }
+    }
+    x.onerror = () => rifiuta(new ErroreInvio('rete'))
+    x.onabort = () => rifiuta(new ErroreInvio('rete'))
+    x.send(corpo)
+  })
 }
 
 export class Coda {
@@ -202,31 +240,35 @@ export class Coda {
     const { id: idServer, multipart } = risposta
     this.aggiorna(l.id, { idServer, stato: 'invio', progresso: 0.1 })
 
-    // 3. Prima la miniatura della griglia: e' minuscola e sblocca la comparsa
-    // nel muro degli altri. La grande, che serve solo aprendo la foto, segue.
+    // 3. La miniatura della griglia: e' minuscola e sblocca la comparsa nel
+    // muro degli altri.
     await conRitentativi(() =>
-      fetch(`/api/upload/anteprima/${idServer}?griglia`, { method: 'PUT', body: ant.griglia })
-        .then(json),
+      invia(`PUT`, `/api/upload/anteprima/${idServer}?griglia`, ant.griglia),
     )
-    this.aggiorna(l.id, { progresso: 0.12 })
+    this.aggiorna(l.id, { progresso: 0.1 })
 
-    await conRitentativi(() =>
-      fetch(`/api/upload/anteprima/${idServer}`, { method: 'PUT', body: ant.blob }).then(json),
-    )
-    this.aggiorna(l.id, { progresso: 0.15 })
+    /*
+     * 4. Poi subito l'originale: e' cio' che non si puo' perdere, e prima
+     * arriva prima e' al sicuro. L'anteprima grande, che serve solo aprendo la
+     * foto, viene dopo -- prima stava in mezzo e rimandava di qualche secondo
+     * il momento in cui il ricordo era davvero salvo.
+     */
+    const avanza = (f: number) => this.aggiorna(l.id, { progresso: 0.1 + 0.85 * f })
 
-    // 4. Poi l'originale, intatto.
     if (!multipart || l.file.size <= SOGLIA_MULTIPART) {
       await conRitentativi(() =>
-        fetch(`/api/upload/diretto/${idServer}`, {
-          method: 'PUT',
-          headers: { 'x-tipo-file': l.file.type || 'application/octet-stream' },
-          body: l.file,
-        }).then(json),
+        invia(`PUT`, `/api/upload/diretto/${idServer}`, l.file, {
+          intestazioni: { 'x-tipo-file': l.file.type || 'application/octet-stream' },
+          avanza,
+        }),
       )
     } else {
       await this.multipart(l, idServer)
     }
+    this.aggiorna(l.id, { progresso: 0.95 })
+
+    // 5. L'anteprima grande, per chi aprira' la foto a schermo intero.
+    await conRitentativi(() => invia(`PUT`, `/api/upload/anteprima/${idServer}`, ant.blob))
 
     this.aggiorna(l.id, { stato: 'fatto', progresso: 1 })
     void scorta.togli(l.id)
@@ -235,19 +277,36 @@ export class Coda {
   private async multipart(l: Lavoro, idServer: string) {
     const totale = Math.ceil(l.file.size / PARTE)
     const parti: { n: number; etag: string }[] = []
+    // Quanto di ogni parte e' gia' partito: la somma fa la barra, che cosi'
+    // avanza di continuo invece che a scatti da dieci mega.
+    const fatto = new Array<number>(totale).fill(0)
 
-    for (let n = 1; n <= totale; n++) {
+    const mandaParte = async (n: number) => {
       const pezzo = l.file.slice((n - 1) * PARTE, n * PARTE)
       // Ogni parte ritenta per conto suo: se cade la linea a meta' video,
       // si riprende da qui e non dall'inizio.
       const parte = await conRitentativi(() =>
-        fetch(`/api/upload/parte/${idServer}?n=${n}`, { method: 'PUT', body: pezzo })
-          .then(json<{ n: number; etag: string }>),
+        invia<{ n: number; etag: string }>(`PUT`, `/api/upload/parte/${idServer}?n=${n}`, pezzo, {
+          avanza: (f) => {
+            fatto[n - 1] = f * pezzo.size
+            const somma = fatto.reduce((a, b) => a + b, 0)
+            this.aggiorna(l.id, { progresso: 0.1 + 0.85 * (somma / l.file.size) })
+          },
+        }),
       )
+      fatto[n - 1] = pezzo.size
       parti.push(parte)
-      this.aggiorna(l.id, { progresso: 0.15 + 0.8 * (n / totale) })
     }
 
+    // Due parti per volta: su una rete decente quasi raddoppia la velocita' di
+    // un video lungo, e non satura il telefono.
+    const numeri = Array.from({ length: totale }, (_, k) => k + 1)
+    const corsie = Array.from({ length: Math.min(2, totale) }, async () => {
+      for (let n = numeri.shift(); n !== undefined; n = numeri.shift()) await mandaParte(n)
+    })
+    await Promise.all(corsie)
+
+    parti.sort((a, b) => a.n - b.n)
     await conRitentativi(() =>
       fetch(`/api/upload/completa/${idServer}`, {
         method: 'POST',
