@@ -22,8 +22,17 @@ async function impronta(file: File): Promise<string | undefined> {
   }
 }
 
-const PARTE = 10 * 1024 * 1024   // 10 MB: sta largo sotto il limite di corpo richiesta
-const SOGLIA_MULTIPART = 10 * 1024 * 1024
+/*
+ * Cinque mega a parte, non dieci.
+ *
+ * Le foto dei telefoni nuovi pesano dodici mega: con la soglia a dieci
+ * partivano in un unico blocco, su una sola connessione, e su rete mobile una
+ * connessione sola non riempie la banda disponibile. Spezzate in parti da
+ * cinque viaggiano a due a due -- e quando la linea cade si riperde un pezzo
+ * piccolo invece di tutto.
+ */
+const PARTE = 5 * 1024 * 1024
+const SOGLIA_MULTIPART = 5 * 1024 * 1024
 const TENTATIVI = 4
 const PARALLELI = 2
 
@@ -41,6 +50,10 @@ export type Lavoro = {
   progresso: number    // 0..1
   anteprimaLocale?: string
   motivo?: Motivo
+  // Quanto sta andando davvero e quanto manca: su una foto da dodici mega
+  // l'attesa e' lunga, e un numero la rende sopportabile.
+  byteAlSecondo?: number
+  rimastoMs?: number
 }
 
 type Ascoltatore = (lavori: Lavoro[]) => void
@@ -212,6 +225,24 @@ export class Coda {
     this.avvisa()
   }
 
+  /**
+   * Misura la velocita' sui byte partiti davvero, non sul tempo totale: cosi'
+   * il numero non resta inchiodato al valore del primo secondo, quando la
+   * connessione non e' ancora a regime.
+   */
+  private cronometro(l: Lavoro) {
+    const inizio = performance.now()
+    return (fatti: number): Partial<Lavoro> => {
+      const secondi = (performance.now() - inizio) / 1000
+      if (secondi < 1 || fatti <= 0) return {}
+      const velocita = fatti / secondi
+      return {
+        byteAlSecondo: velocita,
+        rimastoMs: Math.max(0, ((l.file.size - fatti) / velocita) * 1000),
+      }
+    }
+  }
+
   private async esegui(l: Lavoro) {
     // 1. L'anteprima nasce qui sul telefono: nessuna transcodifica lato server.
     const ant = await creaAnteprima(l.file)
@@ -261,7 +292,10 @@ export class Coda {
      * foto, viene dopo -- prima stava in mezzo e rimandava di qualche secondo
      * il momento in cui il ricordo era davvero salvo.
      */
-    const avanza = (f: number) => this.aggiorna(l.id, { progresso: 0.1 + 0.85 * f })
+    const cronometro = this.cronometro(l)
+    const avanza = (f: number) => {
+      this.aggiorna(l.id, { progresso: 0.1 + 0.85 * f, ...cronometro(f * l.file.size) })
+    }
 
     if (!multipart || l.file.size <= SOGLIA_MULTIPART) {
       await conRitentativi(() =>
@@ -271,7 +305,7 @@ export class Coda {
         }),
       )
     } else {
-      await this.multipart(l, idServer)
+      await this.multipart(l, idServer, cronometro)
     }
     this.aggiorna(l.id, { progresso: 0.95 })
 
@@ -282,7 +316,7 @@ export class Coda {
     void scorta.togli(l.id)
   }
 
-  private async multipart(l: Lavoro, idServer: string) {
+  private async multipart(l: Lavoro, idServer: string, cronometro: (byte: number) => Partial<Lavoro>) {
     const totale = Math.ceil(l.file.size / PARTE)
     const parti: { n: number; etag: string }[] = []
     // Quanto di ogni parte e' gia' partito: la somma fa la barra, che cosi'
@@ -298,7 +332,10 @@ export class Coda {
           avanza: (f) => {
             fatto[n - 1] = f * pezzo.size
             const somma = fatto.reduce((a, b) => a + b, 0)
-            this.aggiorna(l.id, { progresso: 0.1 + 0.85 * (somma / l.file.size) })
+            this.aggiorna(l.id, {
+              progresso: 0.1 + 0.85 * (somma / l.file.size),
+              ...cronometro(somma),
+            })
           },
         }),
       )

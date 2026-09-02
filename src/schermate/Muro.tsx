@@ -216,6 +216,19 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
                     : l.stato === 'attesa' ? t.inFila
                     : l.stato === 'anteprima' ? t.preparo : t.stoCaricando}
                 </p>
+                {/* Quanto sta andando e quanto manca: dodici mega di foto sono
+                    un'attesa lunga, e un numero la rende sopportabile. */}
+                {l.byteAlSecondo !== undefined && l.rimastoMs !== undefined && l.stato === 'invio' && (
+                  <p className="text-[11px] text-fumo/60 mt-0.5">
+                    {t.velocita(
+                      (l.byteAlSecondo / 1e6).toFixed(1),
+                      l.rimastoMs < 60000
+                        ? t.restaSecondi(Math.max(1, Math.round(l.rimastoMs / 1000)))
+                        : t.restaMinuti(Math.round(l.rimastoMs / 60000)),
+                    )}
+                  </p>
+                )}
+
                 {l.stato !== 'giaPresente' && (
                 <div className="h-1 bg-salvia-velo rounded-full mt-1.5 overflow-hidden">
                   <div

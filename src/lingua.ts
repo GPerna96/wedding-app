@@ -28,6 +28,9 @@ const testi = {
     preparo: 'Preparo…',
     stoCaricando: 'Sto caricando…',
     inFila: 'In attesa del suo turno',
+    velocita: (mbs: string, resta: string) => `${mbs} MB/s · manca ${resta}`,
+    restaSecondi: (n: number) => `${n} sec`,
+    restaMinuti: (n: number) => n === 1 ? 'un minuto' : `${n} minuti`,
     nonEAndata: 'Non è andata. Tocca per riprovare.',
     riprova: 'Riprova',
 
@@ -144,6 +147,9 @@ const testi = {
     preparo: 'Getting ready…',
     stoCaricando: 'Uploading…',
     inFila: 'Waiting its turn',
+    velocita: (mbs: string, resta: string) => `${mbs} MB/s · ${resta} left`,
+    restaSecondi: (n: number) => `${n} sec`,
+    restaMinuti: (n: number) => n === 1 ? 'a minute' : `${n} minutes`,
     nonEAndata: 'That did not work. Tap to try again.',
     riprova: 'Retry',
 
