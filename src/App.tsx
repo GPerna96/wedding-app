@@ -50,7 +50,10 @@ export function App() {
         } catch { /* si ripiega sul controllo normale */ }
       }
       try {
-        setIo(await api.io())
+        const chi = await api.io()
+        setIo(chi)
+        // Cio' che era rimasto a meta' la volta scorsa riparte adesso, da solo.
+        if (chi.dentro) void coda.riprendi()
       } catch {
         setIo({ dentro: false, sposi: 'Rita & Francesco', admin: false })
       }

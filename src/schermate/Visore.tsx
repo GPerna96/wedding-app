@@ -25,6 +25,12 @@ export function Visore({ elenco, indice, chiudi }: {
 
   if (!m) return null
 
+  // Di alcuni ricordi e' arrivata solo l'anteprima: l'originale non c'e'.
+  // Puntarci sopra darebbe un riquadro rotto -- e il tasto di download
+  // salverebbe la pagina d'errore invece della foto.
+  const intero = m.stato === 'completo'
+  const grande = `/media/anteprima/${m.id}`
+
   // Swipe orizzontale: soglia bassa, ci si scorre col pollice a una mano.
   let partenza = 0
   const inizio = (e: React.TouchEvent) => { partenza = e.touches[0].clientX }
@@ -48,33 +54,49 @@ export function Visore({ elenco, indice, chiudi }: {
         <div className="flex items-center gap-1">
           {/* download: il browser salva invece di aprire, grazie all'intestazione
               che il server aggiunge quando vede il parametro. */}
-          <a
-            href={`/media/originale/${m.id}?scarica`}
-            download
-            className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/12 text-[13px]"
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor"
-                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 4v11M8 11.5l4 4 4-4M5 19.5h14" />
-            </svg>
-            {t.scaricaFoto}
-          </a>
+          {intero ? (
+            <a
+              href={`/media/originale/${m.id}?scarica`}
+              download
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/12 text-[13px]"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor"
+                   strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 4v11M8 11.5l4 4 4-4M5 19.5h14" />
+              </svg>
+              {t.scaricaFoto}
+            </a>
+          ) : (
+            <span className="px-3 py-2 rounded-full bg-white/10 text-white/60 text-[13px]">
+              {t.originaleMancante}
+            </span>
+          )}
           <button onClick={chiudi} aria-label={t.chiudi} className="w-10 h-10 grid place-items-center text-2xl leading-none">
             ×
           </button>
         </div>
       </div>
 
-      <div className="flex-1 grid place-items-center overflow-hidden">
-        {m.tipo === 'video' ? (
+      {/* min-h-0: senza, il riquadro cresce oltre lo schermo invece di
+          stringersi, e una foto verticale finisce tagliata sopra e sotto. */}
+      <div className="flex-1 min-h-0 grid place-items-center overflow-hidden">
+        {!intero && m.tipo === 'foto' ? (
+          <img
+            key={m.id}
+            src={grande}
+            alt={m.nome}
+            decoding="async"
+            className="max-w-full max-h-full w-auto h-auto object-contain"
+          />
+        ) : m.tipo === 'video' ? (
           <video
             key={m.id}
             src={`/media/originale/${m.id}`}
-            poster={`/media/anteprima/${m.id}`}
+            poster={grande}
             controls
             autoPlay
             playsInline
-            className="max-w-full max-h-full"
+            className="max-w-full max-h-full w-auto h-auto"
           />
         ) : (
           /* L'anteprima grande arriva in un attimo e riempie lo schermo mentre
@@ -83,14 +105,20 @@ export function Visore({ elenco, indice, chiudi }: {
           <img
             key={m.id}
             src={`/media/originale/${m.id}`}
-            srcSet={`/media/anteprima/${m.id} 1600w, /media/originale/${m.id} 4000w`}
+            srcSet={`${grande} 1600w, /media/originale/${m.id} 4000w`}
             sizes="100vw"
             alt={m.nome}
             decoding="async"
-            className="max-w-full max-h-full object-contain"
+            className="max-w-full max-h-full w-auto h-auto object-contain"
           />
         )}
       </div>
+
+      {!intero && (
+        <p className="px-5 pt-3 text-white/55 text-[13px] leading-relaxed text-center">
+          {t.spiegaOriginaleMancante}
+        </p>
+      )}
 
       <div className="sicura-sotto px-4 pt-3 flex items-center justify-between text-white/70 text-[14px]">
         <button

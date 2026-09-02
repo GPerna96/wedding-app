@@ -1,4 +1,5 @@
 import { creaAnteprima } from './anteprima'
+import { scorta, tieniSveglio } from './scorta'
 
 /**
  * Impronta del file, per riconoscerlo se torna una seconda volta.
@@ -81,6 +82,7 @@ export class Coda {
   private lavori: Lavoro[] = []
   private ascoltatori = new Set<Ascoltatore>()
   private attivi = 0
+  private sveglia: (() => void) | null = null
 
   ascolta(fn: Ascoltatore) {
     this.ascoltatori.add(fn)
@@ -102,13 +104,32 @@ export class Coda {
 
   aggiungi(files: File[]) {
     for (const file of files) {
-      this.lavori.unshift({
+      const l: Lavoro = {
         id: crypto.randomUUID(),
         file,
         tipo: file.type.startsWith('video') ? 'video' : 'foto',
         stato: 'attesa',
         progresso: 0,
-      })
+      }
+      this.lavori.unshift(l)
+      // Da qui in poi il file e' al sicuro anche se l'app viene chiusa.
+      void scorta.salva({ id: l.id, file: l.file, tipo: l.tipo })
+    }
+    this.avvisa()
+    this.pompa()
+  }
+
+  /**
+   * Alla riapertura dell'app: cio' che era rimasto in sospeso riparte da solo,
+   * senza che l'invitato debba ricordarsene o ritrovare le foto nel rullino.
+   */
+  async riprendi() {
+    const sospesi = await scorta.tutti()
+    const nuovi = sospesi.filter((s) => !this.lavori.some((l) => l.id === s.id))
+    if (!nuovi.length) return
+
+    for (const s of nuovi) {
+      this.lavori.push({ id: s.id, file: s.file, tipo: s.tipo, stato: 'attesa', progresso: 0 })
     }
     this.avvisa()
     this.pompa()
@@ -124,6 +145,8 @@ export class Coda {
   }
 
   private pompa() {
+    if (!this.sveglia && this.inCorso) this.sveglia = tieniSveglio()
+
     while (this.attivi < PARALLELI) {
       const prossimo = this.lavori.find((l) => l.stato === 'attesa')
       if (!prossimo) return
@@ -137,6 +160,10 @@ export class Coda {
         .finally(() => {
           this.attivi--
           this.pompa()
+          if (this.attivi === 0 && !this.inCorso) {
+            this.sveglia?.()
+            this.sveglia = null
+          }
         })
     }
     this.avvisa()
@@ -169,6 +196,7 @@ export class Coda {
     // Questo scatto c'e' gia': meglio dirlo che caricarlo una seconda volta.
     if (risposta.giaPresente) {
       this.aggiorna(l.id, { stato: 'giaPresente', progresso: 1 })
+      void scorta.togli(l.id)
       return
     }
     const { id: idServer, multipart } = risposta
@@ -201,6 +229,7 @@ export class Coda {
     }
 
     this.aggiorna(l.id, { stato: 'fatto', progresso: 1 })
+    void scorta.togli(l.id)
   }
 
   private async multipart(l: Lavoro, idServer: string) {

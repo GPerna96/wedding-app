@@ -19,6 +19,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
   const [elenco, setElenco] = useState<MediaRiga[]>([])
   const [lavori, setLavori] = useState<Lavoro[]>([])
   const [quanti, setQuanti] = useState(0)
+  const [daFinire, setDaFinire] = useState(0)
   const [inRete, setInRete] = useState(() => navigator.onLine)
   // Un'anteprima puo' non arrivare comunque: rete ballerina, cache storta.
   // Meglio un riquadro pulito che l'icona di immagine rotta con il testo
@@ -75,6 +76,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
           })
         }
         setQuanti(r.ospiti)
+        setDaFinire(r.daFinire ?? 0)
         if (r.media.length) {
           ultimoVisto.current = Math.max(ultimoVisto.current, ...r.media.map((m) => m.creato_il))
         }
@@ -99,6 +101,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
   }, [inPausa, lavori.filter((l) => l.stato === 'fatto').length])
 
   const inCorso = lavori.filter((l) => l.stato !== 'fatto')
+  const miei = elenco.filter((m) => m.stato !== 'completo' && m.nome === nome)
 
   // Le colonne CSS riempiono la prima fino in fondo prima di passare alla
   // seconda: con due sole foto restavano entrambe a sinistra e mezzo schermo
@@ -146,8 +149,50 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
         </div>
       )}
 
+      {/*
+        I ricordi di chi guarda che sono rimasti senza originale. Ricaricando
+        la stessa foto l'app la riconosce e completa quella scheda, senza
+        creare un doppione nel muro.
+      */}
+      {daFinire > 0 && inCorso.length === 0 && (
+        <div className="mx-4 mb-3 bg-salvia-velo/70 border border-salvia-chiara/40 rounded-xl px-4 py-3">
+          <p className="text-[13px] text-salvia leading-relaxed">{t.daCompletare(daFinire)}</p>
+          <p className="text-[12px] text-fumo leading-relaxed mt-1">{t.spiegaDaCompletare}</p>
+
+          {/* Le miniature ci sono: mostrargliele e' l'unico modo perche' sappia
+              quali cercare fra le centinaia di scatti del rullino. */}
+          <div className="flex gap-1.5 mt-2.5 overflow-x-auto">
+            {miei.slice(0, 12).map((m) => (
+              <img
+                key={m.id}
+                src={`/media/griglia/${m.id}`}
+                alt=""
+                loading="lazy"
+                className="w-12 h-12 rounded-lg object-cover shrink-0 opacity-80"
+              />
+            ))}
+          </div>
+
+          <label className="mt-3 inline-block bg-salvia text-crema rounded-xl px-4 py-2 text-[13px] active:scale-[0.98] transition-transform">
+            {t.ricaricaQueste}
+            <input
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              hidden
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? [])
+                if (files.length) coda.aggiungi(files)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
+      )}
+
       {inCorso.length > 0 && (
         <div className="px-4 mb-3 space-y-2">
+          <p className="text-[12px] text-fumo/80 text-center">{t.nonChiudere}</p>
           {inCorso.map((l) => (
             <div key={l.id} className="flex items-center gap-3 bg-carta border border-salvia-velo rounded-xl p-2">
               {l.anteprimaLocale && (

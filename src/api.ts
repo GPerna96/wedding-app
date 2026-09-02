@@ -38,7 +38,8 @@ export const api = {
     return r.json() as Promise<{ dentro: true; nome: string }>
   },
 
-  media: (dopo = 0) => leggi<{ media: MediaRiga[]; ospiti: number }>(`/api/media?dopo=${dopo}`),
+  media: (dopo = 0) =>
+    leggi<{ media: MediaRiga[]; ospiti: number; daFinire: number }>(`/api/media?dopo=${dopo}`),
 
   elimina: (tipo: 'media' | 'messaggi', id: string) =>
     fetch(`/api/sposi/${tipo}/${id}`, { method: 'DELETE' }).then((r) => {

@@ -49,6 +49,8 @@ media.post('/api/upload/inizia', async (c) => {
   if (!Number.isFinite(b.byte) || b.byte <= 0 || b.byte > MAX_BYTE)
     return c.json({ errore: 'dimensione_non_valida' }, 400)
 
+  const multipart = b.byte > 10 * 1024 * 1024
+
   // Gia' visto? Si risponde di si' senza rifare il giro: un doppio tocco o una
   // pagina ricaricata a meta' invio non devono sdoppiare il ricordo.
   if (b.impronta) {
@@ -56,6 +58,50 @@ media.post('/api/upload/inizia', async (c) => {
       "select id from media where impronta = ? and stato = 'completo'",
     ).bind(b.impronta).first<{ id: string }>()
     if (gemello) return c.json({ id: gemello.id, multipart: false, giaPresente: true })
+
+    /*
+     * Lo stesso file, ma di un ricordo rimasto a meta'.
+     *
+     * La sera della festa e' successo spesso: la miniatura arrivava, la foto
+     * compariva nel muro, l'invitato pensava di aver finito e chiudeva l'app
+     * mentre l'originale era ancora in viaggio. Quella riga resta li' senza il
+     * suo file, e nessuno la completerebbe mai piu'.
+     *
+     * Se la stessa foto torna, invece di aggiungere un doppione riprendiamo
+     * quella riga: il muro non cambia, il buco si riempie.
+     */
+    const monco = await c.env.DB.prepare(
+      `select m.id, m.upload_id, m.chiave_originale
+         from media m join ospiti o on o.id = m.ospite_id
+        where m.impronta = ? and m.stato <> 'completo' and (m.ospite_id = ? or o.nome = ?)
+        order by m.creato_il limit 1`,
+    ).bind(b.impronta, c.var.ospite.id, c.var.ospite.nome)
+      .first<{ id: string; upload_id: string | null; chiave_originale: string }>()
+
+    if (monco) {
+      // Un multipart lasciato aperto va chiuso: le parti vecchie non si
+      // mescolano con quelle nuove.
+      if (monco.upload_id) {
+        try {
+          await c.env.MEDIA.resumeMultipartUpload(monco.chiave_originale, monco.upload_id).abort()
+        } catch { /* gia' scaduto o gia' interrotto */ }
+      }
+
+      let ripresa: string | null = null
+      if (multipart) {
+        const mp = await c.env.MEDIA.createMultipartUpload(monco.chiave_originale, {
+          httpMetadata: { contentType: mimeSicuro(b.mime) },
+        })
+        ripresa = mp.uploadId
+      }
+      // L'autore torna a essere chi sta caricando adesso: e' la stessa persona
+      // che ha perso il cookie rientrando dal QR una seconda volta.
+      await c.env.DB.prepare(
+        'update media set upload_id = ?, ospite_id = ?, byte = ? where id = ?',
+      ).bind(ripresa, c.var.ospite.id, b.byte, monco.id).run()
+
+      return c.json({ id: monco.id, multipart, ripresa: true })
+    }
   }
 
   const id = crypto.randomUUID()
@@ -63,7 +109,6 @@ media.post('/api/upload/inizia', async (c) => {
   const chiaveOriginale = `originali/${id}/${nome}`
   const chiaveAnteprima = `anteprime/${id}.webp`
 
-  const multipart = b.byte > 10 * 1024 * 1024
   let uploadId: string | null = null
   if (multipart) {
     // Il tipo va fissato all'apertura: dopo il complete non si tocca piu',
@@ -91,12 +136,12 @@ media.post('/api/upload/inizia', async (c) => {
 /** Verifica che il media esista e appartenga a chi sta caricando. */
 type RigaMedia = {
   id: string; ospite_id: string; chiave_originale: string
-  upload_id: string | null; stato: string
+  upload_id: string | null; stato: string; byte: number
 }
 
 async function mio(c: any, id: string): Promise<RigaMedia | null> {
   const r = (await c.env.DB.prepare(
-    'select id, ospite_id, chiave_originale, upload_id, stato from media where id = ?',
+    'select id, ospite_id, chiave_originale, upload_id, stato, byte from media where id = ?',
   ).bind(id).first()) as RigaMedia | null
   return r && r.ospite_id === c.var.ospite.id ? r : null
 }
@@ -132,9 +177,20 @@ media.put('/api/upload/diretto/:id', async (c) => {
   const m = await mio(c, c.req.param('id'))
   if (!m) return c.json({ errore: 'non_trovato' }, 404)
 
-  await c.env.MEDIA.put(m.chiave_originale, c.req.raw.body, {
+  const messo = await c.env.MEDIA.put(m.chiave_originale, c.req.raw.body, {
     httpMetadata: { contentType: mimeSicuro(c.req.header('x-tipo-file')) },
   })
+
+  /*
+   * Nel deposito sono comparsi due originali da zero byte, marcati come
+   * completi: il corpo della richiesta si era interrotto ma la riga diceva
+   * ugualmente che era tutto a posto, e nessuno avrebbe piu' riprovato.
+   * Da qui in avanti si dichiara completo solo cio' che e' arrivato intero.
+   */
+  if (!messo || messo.size !== m.byte) {
+    return c.json({ errore: 'invio_incompleto', ricevuti: messo?.size ?? 0, attesi: m.byte }, 502)
+  }
+
   await segnaCompleto(c, m.id)
   return c.json({ ok: true })
 })
@@ -175,7 +231,11 @@ media.post('/api/upload/completa/:id', async (c) => {
 
   const { parti } = await c.req.json<{ parti: { n: number; etag: string }[] }>()
   const mp = c.env.MEDIA.resumeMultipartUpload(m.chiave_originale, m.upload_id)
-  await mp.complete(parti.map((p) => ({ partNumber: p.n, etag: p.etag })))
+  const finito = await mp.complete(parti.map((p) => ({ partNumber: p.n, etag: p.etag })))
+
+  if (!finito || finito.size !== m.byte) {
+    return c.json({ errore: 'invio_incompleto', ricevuti: finito?.size ?? 0, attesi: m.byte }, 502)
+  }
 
   await segnaCompleto(c, m.id)
   return c.json({ ok: true })
@@ -198,7 +258,15 @@ media.get('/api/media', async (c) => {
   const quanti = await c.env.DB.prepare('select count(*) as n from ospiti')
     .first<{ n: number }>()
 
-  return c.json({ media: results, ospiti: quanti?.n ?? 0 })
+  // Quanti ricordi di chi sta guardando sono rimasti senza originale. Il conto
+  // arriva da qui e non dall'elenco: alcuni non hanno nemmeno l'anteprima, e
+  // nel muro non compaiono affatto -- ma vanno recuperati anche quelli.
+  const daFinire = await c.env.DB.prepare(
+    `select count(*) as n from media m join ospiti o on o.id = m.ospite_id
+      where m.stato <> 'completo' and o.nome = ?`,
+  ).bind(c.var.ospite.nome).first<{ n: number }>()
+
+  return c.json({ media: results, ospiti: quanti?.n ?? 0, daFinire: daFinire?.n ?? 0 })
 })
 
 /** Serve anteprime e originali da R2, con supporto Range per il seek dei video. */
@@ -242,7 +310,15 @@ media.get('/media/:genere/:id', async (c) => {
   if (!oggetto && genere === 'griglia') {
     oggetto = await c.env.MEDIA.get(riga.chiave_anteprima)
   }
-  if (!oggetto) return c.notFound()
+  /*
+   * L'originale puo' mancare: la miniatura era arrivata, il file no. Prima si
+   * rispondeva con la pagina di errore, e il telefono la salvava come file di
+   * testo -- da cui i ".txt" al posto delle foto. Meglio dirlo per quello che
+   * e', e lasciare che sia l'app a spiegarlo a chi guarda.
+   */
+  if (!oggetto || (genere === 'originale' && oggetto.size === 0)) {
+    return c.json({ errore: 'originale_mancante' }, 404)
+  }
 
   const h = new Headers()
   oggetto.writeHttpMetadata(h)

@@ -93,6 +93,15 @@ const testi = {
     erroreIgnoto: 'Non è andata. Tocca per riprovare.',
     senzaRete: 'Sei senza connessione. I caricamenti riprendono da soli appena torna.',
     scaricaFoto: 'Scarica',
+    originaleMancante: 'Manca l’originale',
+    spiegaOriginaleMancante: 'Di questo ricordo è arrivata solo l’anteprima: l’app era stata chiusa mentre la foto era ancora in viaggio. Chi l’ha scattata può ricaricarla e questa scheda tornerà completa.',
+    daCompletare: (n: number) => n === 1
+      ? 'C’è 1 ricordo da completare: ricaricalo dal telefono'
+      : `Ci sono ${n} ricordi da completare: ricaricali dal telefono`,
+    riprendo: 'Riprendo da dove eravamo…',
+    ricaricaQueste: 'Ricaricale',
+    spiegaDaCompletare: 'Di queste è arrivata solo l’anteprima. Riprendile dal rullino: l’app le riconosce e completa il ricordo, senza doppioni.',
+    nonChiudere: 'Tieni aperta l’app finché non finisce',
 
     accessoSposi: 'Accesso sposi',
     modoSposi: 'Sei entrato come sposo',
@@ -197,6 +206,15 @@ const testi = {
     erroreIgnoto: 'That did not work. Tap to try again.',
     senzaRete: 'You are offline. Uploads resume by themselves when the connection is back.',
     scaricaFoto: 'Save',
+    originaleMancante: 'Original missing',
+    spiegaOriginaleMancante: 'Only the preview of this memory made it: the app was closed while the photo was still on its way. Whoever took it can upload it again and this card will be whole.',
+    daCompletare: (n: number) => n === 1
+      ? '1 memory still to finish: upload it again from your phone'
+      : `${n} memories still to finish: upload them again from your phone`,
+    riprendo: 'Picking up where we left off…',
+    ricaricaQueste: 'Upload them again',
+    spiegaDaCompletare: 'Only the previews of these made it. Pick them from your camera roll again: the app recognises them and fills in the gap, no duplicates.',
+    nonChiudere: 'Keep the app open until it finishes',
 
     accessoSposi: 'Couple’s access',
     modoSposi: 'You are signed in as the couple',
