@@ -142,12 +142,17 @@ export class Coda {
 
   aggiungi(files: File[]) {
     for (const file of files) {
+      const tipo = file.type.startsWith('video') ? 'video' : 'foto'
       const l: Lavoro = {
         id: crypto.randomUUID(),
         file,
-        tipo: file.type.startsWith('video') ? 'video' : 'foto',
+        tipo,
         stato: 'attesa',
         progresso: 0,
+        // Una faccia subito, presa dal file stesso: si caricano due foto per
+        // volta, e le altre restavano righe anonime in attesa del proprio
+        // turno. La miniatura vera la sostituisce appena e' pronta.
+        anteprimaLocale: tipo === 'foto' ? URL.createObjectURL(file) : undefined,
       }
       this.lavori.unshift(l)
       // Da qui in poi il file e' al sicuro anche se l'app viene chiusa.
@@ -210,7 +215,10 @@ export class Coda {
   private async esegui(l: Lavoro) {
     // 1. L'anteprima nasce qui sul telefono: nessuna transcodifica lato server.
     const ant = await creaAnteprima(l.file)
+    const provvisoria = l.anteprimaLocale
     this.aggiorna(l.id, { anteprimaLocale: URL.createObjectURL(ant.griglia), progresso: 0.05 })
+    // La provvisoria teneva in memoria il file intero: qui non serve piu'.
+    if (provvisoria) URL.revokeObjectURL(provvisoria)
 
     // 2. Apri la pratica lato server, dicendo di che file si tratta.
     const marchio = await impronta(l.file)

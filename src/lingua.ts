@@ -27,6 +27,7 @@ const testi = {
     scattaQualcosa: 'Scatta qualcosa e sarai il primo ad apparire su questo muro.',
     preparo: 'Preparo…',
     stoCaricando: 'Sto caricando…',
+    inFila: 'In attesa del suo turno',
     nonEAndata: 'Non è andata. Tocca per riprovare.',
     riprova: 'Riprova',
 
@@ -142,6 +143,7 @@ const testi = {
     scattaQualcosa: 'Take a photo and you will be the first on this wall.',
     preparo: 'Getting ready…',
     stoCaricando: 'Uploading…',
+    inFila: 'Waiting its turn',
     nonEAndata: 'That did not work. Tap to try again.',
     riprova: 'Retry',
 

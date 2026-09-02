@@ -196,7 +196,14 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
           {inCorso.map((l) => (
             <div key={l.id} className="flex items-center gap-3 bg-carta border border-salvia-velo rounded-xl p-2">
               {l.anteprimaLocale && (
-                <img src={l.anteprimaLocale} className="w-12 h-12 rounded-lg object-cover" alt="" />
+                <img
+                  src={l.anteprimaLocale}
+                  className="w-12 h-12 rounded-lg object-cover bg-salvia-velo"
+                  alt=""
+                  // Certi formati (un HEIC su Android) il browser non li apre:
+                  // meglio il riquadro vuoto che l'icona di immagine rotta.
+                  onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
+                />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] text-fumo truncate">
@@ -206,6 +213,7 @@ export function Muro({ apri, nome, sposi, inPausa, admin }: {
                       : l.motivo === 'server' ? t.erroreServer
                       : t.erroreIgnoto)
                     : l.stato === 'giaPresente' ? t.giaPresente
+                    : l.stato === 'attesa' ? t.inFila
                     : l.stato === 'anteprima' ? t.preparo : t.stoCaricando}
                 </p>
                 {l.stato !== 'giaPresente' && (
